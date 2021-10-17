@@ -35,7 +35,9 @@ public class Commands {
                 )
             );
             dispatcher.register(literal("sc")
-                    .redirect(switchchat));
+                    .executes(Commands::switchChatDefaultCommand)
+                    .redirect(switchchat)
+            );
             dispatcher.register(literal("multichats")
                 .requires(Permissions.require("multichats.commands.multichats", 4))
                 .then(literal("reload")

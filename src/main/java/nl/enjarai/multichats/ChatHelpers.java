@@ -22,13 +22,15 @@ public class ChatHelpers {
         placeholders.put("message", new LiteralText(message));
         placeholders.put("prefix", new LiteralText(chat.prefix));
 
+        Text output = PlaceholderAPI.parsePredefinedText(
+                chatFormat,
+                PlaceholderAPI.PREDEFINED_PLACEHOLDER_PATTERN,
+                placeholders
+        );
+        MultiChats.LOGGER.info(output.getString());
+
         MultiChats.SERVER.getPlayerManager().getPlayerList().forEach(player -> {
             if (Permissions.check(player, "multichats.chat." + chatName)) {
-                Text output = PlaceholderAPI.parsePredefinedText(
-                        chatFormat,
-                        PlaceholderAPI.PREDEFINED_PLACEHOLDER_PATTERN,
-                        placeholders
-                );
                 player.sendMessage(output, false);
             }
         });
