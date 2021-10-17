@@ -1,36 +1,38 @@
 {
   "schemaVersion": 1,
-  "id": "modid",
+  "id": "multichats",
   "version": "${version}",
 
-  "name": "Example Mod",
-  "description": "This is an example description! Tell everyone what your mod is about!",
+  "name": "MultiChats",
+  "description": "Create seperate chats managed by permission nodes.",
   "authors": [
     "Me!"
   ],
   "contact": {
     "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
+    "sources": ""
   },
 
   "license": "CC0-1.0",
-  "icon": "assets/modid/icon.png",
+  "icon": "assets/multichats/icon.png",
 
-  "environment": "*",
+  "environment": "server",
   "entrypoints": {
     "main": [
-      "net.fabricmc.example.ExampleMod"
+      "nl.enjarai.multichats.MultiChats"
     ]
   },
   "mixins": [
-    "modid.mixins.json"
+    "multichats.mixins.json"
   ],
 
   "depends": {
     "fabricloader": ">=0.11.3",
     "fabric": "*",
     "minecraft": "1.17.x",
-    "java": ">=16"
+    "java": ">=16",
+    "fabric-permissions-api-v0": "*",
+    "placeholder-api": ">=1.1.1+1.17.1"
   },
   "suggests": {
     "another-mod": "*"
