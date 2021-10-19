@@ -3,24 +3,23 @@ package nl.enjarai.multichats;
 import eu.pb4.placeholders.PlaceholderAPI;
 import eu.pb4.placeholders.TextParser;
 import me.lucko.fabric.api.permissions.v0.Permissions;
-import net.minecraft.network.MessageType;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
+import nl.enjarai.multichats.types.Group;
+import nl.enjarai.multichats.types.GroupPermissionLevel;
 
 import java.util.HashMap;
-import java.util.regex.Pattern;
 
-public class ChatHelpers {
-    public static void sendToChat(ConfigManager.Chat chat, ServerPlayerEntity sendingPlayer, String message) {
-        Text chatFormat = TextParser.parse(chat.getFormat());
+public class Helpers {
+    public static void sendToChat(Group group, ServerPlayerEntity sendingPlayer, String message) {
+        Text chatFormat = TextParser.parse(group.getFormat());
         HashMap<String, Text> placeholders = new HashMap<>();
-        String chatName = chat.getChatName();
 
         placeholders.put("player", sendingPlayer.getDisplayName());
-        placeholders.put("chat", TextParser.parse(chat.displayNameShort));
+        placeholders.put("group", group.displayNameShort);
         placeholders.put("message", new LiteralText(message));
-        placeholders.put("prefix", new LiteralText(chat.prefix));
+        placeholders.put("prefix", new LiteralText(group.prefix));
 
         Text output = PlaceholderAPI.parsePredefinedText(
                 chatFormat,
@@ -30,9 +29,18 @@ public class ChatHelpers {
         MultiChats.LOGGER.info(output.getString());
 
         MultiChats.SERVER.getPlayerManager().getPlayerList().forEach(player -> {
-            if (Permissions.check(player, "multichats.chat." + chatName)) {
+            if (group.checkAccess(player.getUuid()) || Permissions.check(player, "multichats.receive_all")) {
                 player.sendMessage(output, false);
             }
         });
+    }
+
+    public static GroupPermissionLevel getPermissionLevelFromInt(int permissionInt) {
+        return switch (permissionInt) {
+            case 0 -> GroupPermissionLevel.MEMBER;
+            case 1 -> GroupPermissionLevel.MANAGER;
+            case 2 -> GroupPermissionLevel.OWNER;
+            default -> null;
+        };
     }
 }

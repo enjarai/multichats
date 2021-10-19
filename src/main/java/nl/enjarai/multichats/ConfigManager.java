@@ -2,11 +2,11 @@ package nl.enjarai.multichats;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import nl.enjarai.multichats.types.Group;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import java.util.Map;
 
 public class ConfigManager {
     private static final Gson gson = new GsonBuilder()
@@ -16,48 +16,20 @@ public class ConfigManager {
             .create();
 
     // Config values
-    public String chatFormat = "<yellow><hover:'Click to send message to this chat'><cmd:${prefix}>[${chat}]</cmd></hover></yellow> ${player} <dark_gray>» <white>${message}";
+    public String chatFormat = "<dark_aqua><hover:'Click to send message to this chat'><cmd:${prefix}>[${group}]</cmd></hover></dark_aqua> ${player} <dark_gray>» <white>${message}";
+//    public String globalPrefix = "$";
 
     public Messages messages = new Messages();
     public static class Messages {
+        public String unknownError = "<red>By some wizardry you've found an error message that shouldn't be seen!\nplease contact enjarai on the disc because this is a bug";
         public String noPlayerError = "<red>This command should be executed by a player";
         public String noPermissionError = "<red>You dont have permission to access that chat";
-        public String noChatError = "<red>This chat does not exist";
-        public String switched = "<yellow>Switched chat to ${chat}\nYou can also prefix your message with \"${prefix}\" to send it to this chat</yellow>";
-        public String switchedGlobal = "<yellow>Switched to global chat";
+        public String noGroupError = "<red>This alliance does not exist";
+        public String existsError = "<red>This alliance already exists";
+        public String switched = "<dark_aqua>Switched chat to ${group}\nYou can also prefix your message with \"${prefix}\" to send it to this chat";
+        public String switchedGlobal = "<dark_aqua>Switched to global chat";
+        public String groupCreated = "<dark_aqua>Successfully created the alliance ${group}!\nAdd members with <white>/alliance invite</white> and \nchange settings with <white>/alliance modify</white>.";
     }
-
-    public HashMap<String, Chat> chats = new HashMap<>() {{
-        put("staff", new Chat("<dark_red><bold>Staff Chat", "<dark_red><bold>SC", "#", null));
-    }};
-    public static class Chat {
-        public String displayName;
-        public String displayNameShort;
-        public String prefix;
-        public String formatOverride;
-
-        public Chat(String displayName, String displayNameShort, String prefix, String formatOverride) {
-            this.displayName = displayName;
-            this.displayNameShort = displayNameShort;
-            this.prefix = prefix;
-            this.formatOverride = formatOverride;
-        }
-
-        public String getFormat() {
-            return formatOverride == null ? MultiChats.CONFIG.chatFormat : formatOverride;
-        }
-
-        public String getChatName() {
-            // Couldn't find a better way to get the simple name for a Chat object
-            for(Map.Entry<String, Chat> entry : MultiChats.CONFIG.chats.entrySet()) {
-                if(entry.getValue() == this) {
-                    return entry.getKey();
-                }
-            }
-            return null;
-        }
-    }
-
 
     // Reading and saving
 

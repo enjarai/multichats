@@ -12,12 +12,9 @@ import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import nl.enjarai.multichats.types.Group;
 
-import java.io.File;
 import java.util.HashMap;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import static net.minecraft.command.CommandSource.suggestMatching;
 import static net.minecraft.server.command.CommandManager.argument;
@@ -31,7 +28,7 @@ public class Commands {
                 .executes(Commands::switchChatDefaultCommand)
                 .then(argument("chat", StringArgumentType.string())
                     .executes(Commands::switchChatCommand)
-                    .suggests((ctx, builder) -> suggestMatching(switchChatCompletion(ctx), builder))
+                    .suggests((ctx, builder) -> suggestMatching(MultiChats.DATABASE.getGroupNames(ctx.getSource().getPlayer().getUuid()), builder))
                 )
             );
             dispatcher.register(literal("sc")
@@ -59,12 +56,49 @@ public class Commands {
                 .then(literal("delete")
                     .then(argument("name", StringArgumentType.string())
                         .executes(Commands::deleteChat)
-                        .suggests((ctx, builder) -> suggestMatching(MultiChats.CONFIG.chats.keySet(), builder))
+                        .suggests((ctx, builder) -> suggestMatching(MultiChats.DATABASE.getGroupNames(), builder))
                     )
                 )
             );
+            LiteralCommandNode<ServerCommandSource> alliance = dispatcher.register(literal("alliance")
+                    .requires(Permissions.require("multichats.commands.alliance", true))
+                    .then(literal("create")
+                            .then(argument("name", StringArgumentType.string())
+                                    .executes(Commands::createGroup)
+                            )
+                    )
+            );
         });
     }
+
+    private static int createGroup(CommandContext<ServerCommandSource> ctx) {
+        String name = ctx.getArgument("name", String.class);
+
+        if (MultiChats.DATABASE.getGroup(name) != null) {
+            ctx.getSource().sendFeedback(TextParser.parse(MultiChats.CONFIG.messages.existsError), true);
+            return 1;
+        }
+
+        Group group = new Group(name);
+        if (!group.save()) {
+            ctx.getSource().sendFeedback(TextParser.parse(MultiChats.CONFIG.messages.unknownError), true);
+            return 1;
+        }
+
+
+        HashMap<String, Text> placeholders = new HashMap<>();
+
+        placeholders.put("group", group.displayName);
+
+        ctx.getSource().sendFeedback(PlaceholderAPI.parsePredefinedText(
+                TextParser.parse(MultiChats.CONFIG.messages.groupCreated),
+                PlaceholderAPI.PREDEFINED_PLACEHOLDER_PATTERN,
+                placeholders
+        ), true);
+        return 0;
+    }
+
+    // old stuff
 
     private static int switchChatDefaultCommand(CommandContext<ServerCommandSource> ctx) {
         ServerPlayerEntity player;
@@ -92,25 +126,25 @@ public class Commands {
             return 1;
         }
 
-        ConfigManager.Chat chat = MultiChats.CONFIG.chats.get(chatName);
-        if (chat == null) {
-            ctx.getSource().sendFeedback(TextParser.parse(MultiChats.CONFIG.messages.noChatError), false);
+        Group group = MultiChats.DATABASE.getGroup(chatName);
+        if (group == null) {
+            ctx.getSource().sendFeedback(TextParser.parse(MultiChats.CONFIG.messages.noGroupError), false);
             return 1;
         }
 
-        // Continue command if chat is null (so default) or player has permission node, otherwise respond with error
-        if (!Permissions.check(player, "multichats.chat." + chat)) {
+        // Continue command if group is null (so default) or player has permission node, otherwise respond with error
+        if (!group.checkAccess(player.getUuid())) {
             ctx.getSource().sendFeedback(TextParser.parse(MultiChats.CONFIG.messages.noPermissionError), false);
             return 1;
         }
 
-        PlayerChatTracker.setToChat(player, chat);
+        PlayerChatTracker.setToChat(player, group);
 
 
         HashMap<String, Text> placeholders = new HashMap<>();
 
-        placeholders.put("chat", TextParser.parse(chat.displayName));
-        placeholders.put("prefix", new LiteralText(chat.prefix));
+        placeholders.put("group", group.displayName);
+        placeholders.put("prefix", new LiteralText(group.prefix));
 
         ctx.getSource().sendFeedback(PlaceholderAPI.parsePredefinedText(
                 TextParser.parse(MultiChats.CONFIG.messages.switched),
@@ -144,48 +178,33 @@ public class Commands {
             displayNameShort = displayName;
         }
 
-        if (MultiChats.CONFIG.chats.get(chatName) != null) {
-            ctx.getSource().sendFeedback(TextParser.parse("<red>That chat already exists"), true);
+        if (MultiChats.DATABASE.getGroup(chatName) != null) {
+            ctx.getSource().sendFeedback(TextParser.parse("<red>That group already exists"), true);
             return 1;
         }
 
-        MultiChats.CONFIG.chats.put(chatName, new ConfigManager.Chat(
-                displayName,
-                displayNameShort,
-                prefix,
-                null
-        ));
-        MultiChats.CONFIG.saveConfigFile(MultiChats.CONFIG_FILE);
+        Group group = new Group(chatName);
+        group.displayName = TextParser.parse(displayName);
+        group.displayNameShort = TextParser.parse(displayNameShort);
+        group.prefix = prefix;
+        group.save();
 
-        ctx.getSource().sendFeedback(TextParser.parse("Chat \"" + chatName + "\" created\nTo assign this chat to players use the node <green>multichats.chat." + chatName), true);
+        ctx.getSource().sendFeedback(TextParser.parse("Group \"" + chatName + "\" created\nTo assign this group to players use the node <green>multichats.chat." + chatName), true);
         return 0;
     }
 
     private static int deleteChat(CommandContext<ServerCommandSource> ctx) {
         String chatName = ctx.getArgument("name", String.class);
+        Group group = MultiChats.DATABASE.getGroup(chatName);
 
-        if (MultiChats.CONFIG.chats.get(chatName) == null) {
+        if (group == null) {
             ctx.getSource().sendFeedback(TextParser.parse("<red>That chat doesn't exist"), true);
             return 1;
         }
 
-        MultiChats.CONFIG.chats.remove(chatName);
-        MultiChats.CONFIG.saveConfigFile(MultiChats.CONFIG_FILE);
+        group.delete();
 
-        ctx.getSource().sendFeedback(TextParser.parse("Chat \"" + chatName + "\" deleted"), true);
+        ctx.getSource().sendFeedback(TextParser.parse("Group \"" + chatName + "\" deleted"), true);
         return 0;
-    }
-
-    private static Set<String> switchChatCompletion(CommandContext<ServerCommandSource> ctx) {
-        // Selects only the chats the player has access to, to show in tab-completion
-        return MultiChats.CONFIG.chats.keySet().stream().filter(
-                i -> {
-                    try {
-                        return Permissions.check(ctx.getSource().getPlayer(), "multichats.chat." + i);
-                    } catch (CommandSyntaxException e) {
-                        return false;
-                    }
-                }
-        ).collect(Collectors.toSet());
     }
 }
