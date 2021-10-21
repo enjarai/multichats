@@ -36,6 +36,7 @@ public class ConfigManager {
         public String playerNotInGroupError = "<red>That player is not a part of this alliance";
         public String alreadyManagerError = "<red>That player is already a manager";
         public String notManagerError = "<red>That player is not a manager";
+        public String prefixTooLongError = "<red>That prefix is invalid";
         // General messages
         public String switched = "<dark_aqua>Switched chat to <yellow>${group}</yellow>";
         public String switchedPrefix = "<dark_aqua>You can also prefix your message with \"<yellow>${prefix}</yellow>\" to send it to this chat";

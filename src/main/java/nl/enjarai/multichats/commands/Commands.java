@@ -446,7 +446,7 @@ public class Commands {
             return 1;
         }
 
-        if (!(group.checkAccess(player.getUuid(), GroupPermissionLevel.OWNER))) {
+        if (!(group.checkAccess(player.getUuid(), GroupPermissionLevel.OWNER) || Permissions.check(player, "multichats.admin.modify"))) {
             ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.noPermissionError), true);
             return 1;
         }
@@ -462,8 +462,10 @@ public class Commands {
 
                 switch (type) {
                     case PREFIX -> {
-                        if (arg.length() > 3) {
-                            error = CONFIG.messages.notManagerError;
+                        if (Objects.equals(arg, "reset")) {
+                            arg = null;
+                        } else if (arg.length() > 3 || arg.length() == 0) {
+                            error = CONFIG.messages.prefixTooLongError;
                             break;
                         }
 

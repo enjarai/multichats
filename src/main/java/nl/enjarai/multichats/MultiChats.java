@@ -25,7 +25,7 @@ public class MultiChats implements ModInitializer {
 	public static final Logger LOGGER = LogManager.getLogger("MultiChats");
 	public static MinecraftServer SERVER;
 
-	public static final String VERSION = "2.0.1";
+	public static final String VERSION = "2.0.2";
 	public static final File CONFIG_FILE = new File("config/multichats.json");
 	public static final String DATABASE_FILE ="config/multichats.db";
 
