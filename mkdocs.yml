@@ -1,0 +1,39 @@
+site_name: Alliances Documentation
+
+nav:
+  - index.md
+
+theme:
+  name: material
+  features:
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      primary: slate gray
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: dark)"
+      primary: slate gray
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+
+plugins:
+  - search
+extra:
+  social:
+#    - icon: fontawesome/brands/github
+#      link: https://github.com/quiltservertools/serversidedevdocs
+#      name: GitHub
+#    - icon: fontawesome/brands/discord
+#      link: https://discord.gg/TB8455aGuu
+#      name: Server-side Development Discord
+#    - icon: fontawesome/brands/discord
+#      link: https://discord.gg/FpRNYrQaGP
+#      name: QuiltServerTools Discord
+#  copyright: To the extent possible under law, QuiltServerTools has waived all copyright and related or neighboring rights to this work
+  generator: false
