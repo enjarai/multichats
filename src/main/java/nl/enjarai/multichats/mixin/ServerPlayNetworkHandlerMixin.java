@@ -24,6 +24,8 @@ public class ServerPlayNetworkHandlerMixin {
 	@Shadow
 	private MinecraftServer server;
 
+	@Shadow private int messageCooldown;
+
 	@Inject(method = "onGameMessage", at = @At(value = "INVOKE", target = "Ljava/lang/String;startsWith(Ljava/lang/String;)Z", shift = At.Shift.BEFORE), cancellable = true)
 	public void broadcastChatMessage(ChatMessageC2SPacket packet, CallbackInfo info) {
 		String message = packet.getChatMessage();
@@ -37,7 +39,7 @@ public class ServerPlayNetworkHandlerMixin {
 		// Check for prefixes
 
 		for (Group group : MultiChats.DATABASE.getGroups(player.getUuid())) {
-			if (message.startsWith(group.prefix)) {
+			if (group.prefix != null && message.startsWith(group.prefix)) {
 				Helpers.sendToChat(group, player, message.substring(group.prefix.length()));
 				info.cancel();
 				return;
@@ -51,6 +53,4 @@ public class ServerPlayNetworkHandlerMixin {
 			info.cancel();
 		}
 	}
-
-	// TODO: global prefix
 }

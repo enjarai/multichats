@@ -5,9 +5,13 @@ import eu.pb4.placeholders.PlaceholderResult;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.text.LiteralText;
 import net.minecraft.util.Identifier;
+import nl.enjarai.multichats.commands.Commands;
+import nl.enjarai.multichats.commands.InviteManager;
 import nl.enjarai.multichats.database.DatabaseHandlerInterface;
 import nl.enjarai.multichats.database.SQLiteDatabase;
+import nl.enjarai.multichats.types.Group;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -25,6 +29,8 @@ public class MultiChats implements ModInitializer {
 	public static ConfigManager CONFIG = ConfigManager.loadConfigFile(CONFIG_FILE);
 	public static DatabaseHandlerInterface DATABASE;
 
+	public static InviteManager INVITE_MANAGER = new InviteManager();
+
 	@Override
 	public void onInitialize() {
 		// This code runs as soon as Minecraft is in a mod-load-ready state.
@@ -34,13 +40,7 @@ public class MultiChats implements ModInitializer {
 
 		Commands.register();
 
-		PlaceholderAPI.register(new Identifier("multichats", "group_name"), (ctx) -> {
-			if (ctx.hasPlayer()) {
-				return PlaceholderResult.value(DATABASE.getPrimaryGroup(ctx.getPlayer().getUuid()).displayName);
-			} else {
-				return PlaceholderResult.invalid("No player!");
-			}
-		});
+		Placeholders.register();
 
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
 			if (DATABASE != null) {
@@ -58,6 +58,7 @@ public class MultiChats implements ModInitializer {
 
 		try {
 			DATABASE = new SQLiteDatabase(DATABASE_FILE);
+			LOGGER.info("MultiChats database loaded.");
 		} catch (SQLException e) {
 			e.printStackTrace();
 

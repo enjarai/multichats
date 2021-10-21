@@ -3,6 +3,7 @@ package nl.enjarai.multichats.database;
 import nl.enjarai.multichats.types.Group;
 import nl.enjarai.multichats.types.GroupPermissionLevel;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,10 +26,15 @@ public interface DatabaseHandlerInterface {
 
     List<Group> getGroups();
     List<Group> getGroups(UUID uuid);
+    List<Group> getGroups(UUID uuid, GroupPermissionLevel permissionLevel);
+
     List<String> getGroupNames();
     List<String> getGroupNames(UUID uuid);
+    List<String> getGroupNames(UUID uuid, GroupPermissionLevel permissionLevel);
 
     Group getGroup(String name);
+    boolean changeGroupOwner(Group group, UUID uuid);
+
     Group getPrimaryGroup(UUID uuid);
 
 
@@ -38,6 +44,10 @@ public interface DatabaseHandlerInterface {
 
     boolean changePrimaryGroup(UUID uuid, Group group);
     boolean checkAccess(Group group, UUID uuid);
+    boolean checkPrimary(Group group, UUID uuid);
 
     GroupPermissionLevel getPermissionLevel(Group group, UUID uuid);
+
+    HashMap<UUID, GroupPermissionLevel> getMembers(Group group);
+    HashMap<UUID, GroupPermissionLevel> getMembers(Group group, GroupPermissionLevel exactPermissionLevel);
 }

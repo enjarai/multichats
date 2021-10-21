@@ -18,17 +18,42 @@ public class ConfigManager {
     // Config values
     public String chatFormat = "<dark_aqua><hover:'Click to send message to this chat'><cmd:${prefix}>[${group}]</cmd></hover></dark_aqua> ${player} <dark_gray>» <white>${message}";
 //    public String globalPrefix = "$";
+    public String defaultGroupName = "<dark_gray>Wanderer";
 
     public Messages messages = new Messages();
     public static class Messages {
         public String unknownError = "<red>By some wizardry you've found an error message that shouldn't be seen!\nplease contact enjarai on the disc because this is a bug";
         public String noPlayerError = "<red>This command should be executed by a player";
-        public String noPermissionError = "<red>You dont have permission to access that chat";
+        public String noPermissionChatError = "<red>You dont have permission to access that chat";
+        public String noPermissionError = "<red>You dont have permission to do that";
         public String noGroupError = "<red>This alliance does not exist";
+        public String noInvitesError = "<red>You have no open invites";
+        public String notInGroupError = "<red>You arent part of that alliance";
+        public String cantFindPlayerError = "<red>Couldn't find that player";
         public String existsError = "<red>This alliance already exists";
-        public String switched = "<dark_aqua>Switched chat to ${group}\nYou can also prefix your message with \"${prefix}\" to send it to this chat";
+        public String groupOwnerCantLeaveError = "<red>The alliance owner cant leave the alliance";
+        public String cantOwnTwoGroupsError = "<red>A player can only own one alliance";
+        public String playerNotInGroupError = "<red>That player is not a part of this alliance";
+        public String alreadyManagerError = "<red>That player is already a manager";
+        public String notManagerError = "<red>That player is not a manager";
+        public String switched = "<dark_aqua>Switched chat to <yellow>${group}</yellow>";
+        public String switchedPrefix = "<dark_aqua>You can also prefix your message with \"<yellow>${prefix}</yellow>\" to send it to this chat";
         public String switchedGlobal = "<dark_aqua>Switched to global chat";
-        public String groupCreated = "<dark_aqua>Successfully created the alliance ${group}!\nAdd members with <white>/alliance invite</white> and \nchange settings with <white>/alliance modify</white>.";
+        public String groupCreated = "<dark_aqua>Successfully created the alliance <yellow>${group}</yellow>!\nAdd members with <white>/alliance invite</white> and \nchange settings with <white>/alliance modify</white>.";
+        public String groupDeleted = "<dark_aqua>The alliance <yellow>${group}</yellow> was deleted.";
+        public String groupLeft = "<dark_aqua>You left <yellow>${group}</yellow>.";
+        public String sentInvite = "<dark_aqua><yellow>${playerTo}</yellow> was invited to <yellow>${group}</yellow>,\nthey can accept with <white>/alliance accept</white>";
+        public String receivedInvite = "<dark_aqua>You received an invite from <yellow>${playerFrom}</yellow> to join <yellow>${group}</yellow>\n<green><hover:Click here to accept><run_cmd:'/alliance accept'>[Accept]</run_cmd></hover></green> <red><hover:Click here to deny><run_cmd:'/alliance deny'>[Deny]</run_cmd></hover></red>";
+        public String inviteAcceptedFrom = "<dark_aqua><yellow>${playerTo}</yellow> has <green>accepted</green> your invite!";
+        public String inviteDeniedFrom = "<dark_aqua><yellow>${playerTo}</yellow> has <red>rejected</red> your invite.";
+        public String inviteAcceptedTo = "<dark_aqua>You <green>accepted</green> <yellow>${playerFrom}</yellow>'s invite!";
+        public String inviteDeniedTo = "<dark_aqua>You <red>rejected</red> <yellow>${playerFrom}</yellow>'s invite.";
+        public String modifyOwner = "<dark_aqua>Transferred ownership of <yellow>${group}</yellow> to <yellow>${player}</yellow>.";
+        public String modifyAddManager = "<dark_aqua>Made <yellow>${player}</yellow> a manager of <yellow>${group}</yellow>.";
+        public String modifyRemoveManager = "<dark_aqua>Made <yellow>${player}</yellow> no longer a manager of <yellow>${group}</yellow>.";
+        public String modifyPrefix = "<dark_aqua>Set the prefix of <yellow>${group}</yellow> to <yellow>${string}</yellow>.";
+        public String modifyDisplayName = "<dark_aqua>Set the display name of <yellow>${group}</yellow> to <yellow>${string}</yellow>.";
+        public String modifyDisplayNameShort = "<dark_aqua>Set the short display name of <yellow>${group}</yellow> to <yellow>${string}</yellow>.";
     }
 
     // Reading and saving

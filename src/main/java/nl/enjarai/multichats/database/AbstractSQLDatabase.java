@@ -6,10 +6,7 @@ import nl.enjarai.multichats.types.Group;
 import nl.enjarai.multichats.types.GroupPermissionLevel;
 
 import java.sql.*;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
     protected Connection CONNECTION;
@@ -56,10 +53,12 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
     @Override
     public boolean deleteGroup(Group group) {
         try {
-            PreparedStatement prepStmt = CONNECTION.prepareStatement(
-                    "DELETE FROM Groups WHERE name=?;");
+            PreparedStatement prepStmt = CONNECTION.prepareStatement("DELETE FROM Groups WHERE name=?;");
             prepStmt.setString(1, group.name);
+            prepStmt.executeUpdate();
 
+            prepStmt = CONNECTION.prepareStatement("DELETE FROM Users WHERE groupName=?;");
+            prepStmt.setString(1, group.name);
             prepStmt.executeUpdate();
 
         } catch (Exception e) {
@@ -86,8 +85,6 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
 
                 list.add(group);
                 } while (result.next());
-            } else {
-                return null;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -101,8 +98,37 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
         List<Group> list = new LinkedList<>();
         try {
             PreparedStatement prepStmt = CONNECTION.prepareStatement(
-                    "SELECT * FROM Groups WHERE name=(SELECT groupName FROM Users WHERE uuid=?);");
+                    "SELECT * FROM Groups INNER JOIN Users ON Groups.name = Users.groupName WHERE uuid=?;");
             prepStmt.setString(1, uuid.toString());
+
+            ResultSet result = prepStmt.executeQuery();
+            Group group;
+
+            if (result.next()) {
+                do {
+                    group = new Group(result.getString("name"));
+                    group.displayName = Text.Serializer.fromJson(result.getString("displayName"));
+                    group.displayNameShort = Text.Serializer.fromJson(result.getString("displayNameShort"));
+                    group.prefix = result.getString("prefix");
+
+                    list.add(group);
+                } while (result.next());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        return list;
+    }
+
+    @Override
+    public List<Group> getGroups(UUID uuid, GroupPermissionLevel permissionLevel) {
+        List<Group> list = new LinkedList<>();
+        try {
+            PreparedStatement prepStmt = CONNECTION.prepareStatement(
+                    "SELECT * FROM Groups INNER JOIN Users ON Groups.name = Users.groupName WHERE uuid=? AND permissionLevel>=?;");
+            prepStmt.setString(1, uuid.toString());
+            prepStmt.setInt(2, permissionLevel.dbInt);
 
             ResultSet result = prepStmt.executeQuery();
             Group group;
@@ -135,8 +161,6 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
                 do {
                     list.add(result.getString("name"));
                 } while (result.next());
-            } else {
-                return null;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -150,7 +174,7 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
         List<String> list = new LinkedList<>();
         try {
             PreparedStatement prepStmt = CONNECTION.prepareStatement(
-                    "SELECT name FROM Groups WHERE name=(SELECT groupName FROM Users WHERE uuid=?);");
+                    "SELECT name FROM Groups INNER JOIN Users ON Groups.name = Users.groupName WHERE uuid=?;");
             prepStmt.setString(1, uuid.toString());
 
             ResultSet result = prepStmt.executeQuery();
@@ -159,8 +183,29 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
                 do {
                     list.add(result.getString("name"));
                 } while (result.next());
-            } else {
-                return null;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        return list;
+    }
+
+    @Override
+    public List<String> getGroupNames(UUID uuid, GroupPermissionLevel permissionLevel) {
+        List<String> list = new LinkedList<>();
+        try {
+            PreparedStatement prepStmt = CONNECTION.prepareStatement(
+                    "SELECT name FROM Groups INNER JOIN Users ON Groups.name = Users.groupName WHERE uuid=? AND permissionLevel>=?;");
+            prepStmt.setString(1, uuid.toString());
+            prepStmt.setInt(2, permissionLevel.dbInt);
+
+            ResultSet result = prepStmt.executeQuery();
+
+            if (result.next()) {
+                do {
+                    list.add(result.getString("name"));
+                } while (result.next());
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -194,6 +239,28 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
         return group;
     }
 
+    @Override
+    public boolean changeGroupOwner(Group group, UUID uuid) {
+        try {
+            PreparedStatement prepStmt = CONNECTION.prepareStatement("UPDATE Users SET permissionLevel=? WHERE groupName=? AND permissionLevel=?;");
+            prepStmt.setInt(1, GroupPermissionLevel.MANAGER.dbInt);
+            prepStmt.setString(2, group.name);
+            prepStmt.setInt(3, GroupPermissionLevel.OWNER.dbInt);
+            prepStmt.executeUpdate();
+
+            prepStmt = CONNECTION.prepareStatement("UPDATE Users SET permissionLevel=? WHERE uuid=? AND groupName=?;");
+            prepStmt.setInt(1, GroupPermissionLevel.OWNER.dbInt);
+            prepStmt.setString(2, uuid.toString());
+            prepStmt.setString(3, group.name);
+            prepStmt.executeUpdate();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
     // User management
 
     @Override
@@ -201,7 +268,7 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
         Group group;
         try {
             PreparedStatement prepStmt = CONNECTION.prepareStatement(
-                    "SELECT * FROM Groups WHERE name=(SELECT groupName FROM Users WHERE uuid=?, isPrimary=true LIMIT 1) LIMIT 1;");
+                    "SELECT * FROM Groups INNER JOIN Users ON Groups.name = Users.groupName WHERE uuid=? AND isPrimary=true LIMIT 1;");
             prepStmt.setString(1, uuid.toString());
 
             ResultSet result = prepStmt.executeQuery();
@@ -227,7 +294,7 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
             Group currentPrimary = getPrimaryGroup(uuid);
 
             PreparedStatement prepStmt = CONNECTION.prepareStatement(
-                    "INSERT OR UPDATE INTO Users VALUES (NULL, ?, ?, ?, ?);");
+                    "INSERT OR REPLACE INTO Users VALUES (NULL, ?, ?, ?, ?);");
             prepStmt.setString(1, uuid.toString());
             prepStmt.setString(2, group.name);
             prepStmt.setInt(3, permissionLevel.dbInt);
@@ -250,7 +317,7 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
     public boolean removeUserFromGroup(UUID uuid, Group group) {
         try {
             PreparedStatement prepStmt = CONNECTION.prepareStatement(
-                    "DELETE FROM Users WHERE uuid=?, groupName=?;");
+                    "DELETE FROM Users WHERE uuid=? AND groupName=?;");
             prepStmt.setString(1, uuid.toString());
             prepStmt.setString(2, group.name);
 
@@ -266,13 +333,13 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
     @Override
     public boolean changePrimaryGroup(UUID uuid, Group group) {
         try {
-            PreparedStatement prepStmt = CONNECTION.prepareStatement(
-                    "UPDATE Users SET primary=false WHERE uuid=?;" +
-                    "UPDATE Users SET primary=true WHERE uuid=?, groupName=?;");
+            PreparedStatement prepStmt = CONNECTION.prepareStatement("UPDATE Users SET isPrimary=false WHERE uuid=?;");
             prepStmt.setString(1, uuid.toString());
+            prepStmt.executeUpdate();
+
+            prepStmt = CONNECTION.prepareStatement("UPDATE Users SET isPrimary=true WHERE uuid=? AND groupName=?;");
             prepStmt.setString(1, uuid.toString());
             prepStmt.setString(2, group.name);
-
             prepStmt.executeUpdate();
 
         } catch (Exception e) {
@@ -286,7 +353,24 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
     public boolean checkAccess(Group group, UUID uuid) {
         try {
             PreparedStatement prepStmt = CONNECTION.prepareStatement(
-                    "SELECT * FROM Users WHERE uuid=?, groupName=? LIMIT 1;");
+                    "SELECT * FROM Users WHERE uuid=? AND groupName=? LIMIT 1;");
+            prepStmt.setString(1, uuid.toString());
+            prepStmt.setString(2, group.name);
+
+            ResultSet result = prepStmt.executeQuery();
+
+            return result.next();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    @Override
+    public boolean checkPrimary(Group group, UUID uuid) {
+        try {
+            PreparedStatement prepStmt = CONNECTION.prepareStatement(
+                    "SELECT * FROM Users WHERE uuid=? AND groupName=? AND isPrimary=true LIMIT 1;");
             prepStmt.setString(1, uuid.toString());
             prepStmt.setString(2, group.name);
 
@@ -303,16 +387,66 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
     public GroupPermissionLevel getPermissionLevel(Group group, UUID uuid) {
         try {
             PreparedStatement prepStmt = CONNECTION.prepareStatement(
-                    "SELECT permissionLevel FROM Users WHERE uuid=?, groupName=? LIMIT 1;");
+                    "SELECT permissionLevel FROM Users WHERE uuid=? AND groupName=? LIMIT 1;");
             prepStmt.setString(1, uuid.toString());
             prepStmt.setString(2, group.name);
 
             ResultSet result = prepStmt.executeQuery();
 
-            return Helpers.getPermissionLevelFromInt(result.getInt("permissionLevel"));
+            return result.next() ? Helpers.getPermissionLevelFromInt(result.getInt("permissionLevel")) : null;
+        } catch (SQLException e) {
+            return null;
+        }
+    }
+
+    @Override
+    public HashMap<UUID, GroupPermissionLevel> getMembers(Group group) {
+        HashMap<UUID, GroupPermissionLevel> map = new HashMap<>();
+        try {
+            PreparedStatement prepStmt = CONNECTION.prepareStatement(
+                    "SELECT * FROM Users WHERE groupName=?;");
+            prepStmt.setString(1, group.name);
+
+            ResultSet result = prepStmt.executeQuery();
+
+            if (result.next()) {
+                do {
+                    map.put(
+                            UUID.fromString(result.getString("uuid")),
+                            Helpers.getPermissionLevelFromInt(result.getInt("permissionLevel"))
+                    );
+                } while (result.next());
+            }
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
+        return map;
+    }
+
+    @Override
+    public HashMap<UUID, GroupPermissionLevel> getMembers(Group group, GroupPermissionLevel exactPermissionLevel) {
+        HashMap<UUID, GroupPermissionLevel> map = new HashMap<>();
+        try {
+            PreparedStatement prepStmt = CONNECTION.prepareStatement(
+                    "SELECT * FROM Users WHERE groupName=? AND permissionLevel=?;");
+            prepStmt.setString(1, group.name);
+            prepStmt.setInt(2, exactPermissionLevel.dbInt);
+
+            ResultSet result = prepStmt.executeQuery();
+
+            if (result.next()) {
+                do {
+                    map.put(
+                            UUID.fromString(result.getString("uuid")),
+                            Helpers.getPermissionLevelFromInt(result.getInt("permissionLevel"))
+                    );
+                } while (result.next());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        return map;
     }
 }

@@ -1,10 +1,10 @@
 package nl.enjarai.multichats.types;
 
-import com.mojang.datafixers.kinds.IdF;
 import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
 import nl.enjarai.multichats.MultiChats;
 
+import java.util.HashMap;
 import java.util.UUID;
 
 public class Group {
@@ -34,9 +34,17 @@ public class Group {
         return MultiChats.DATABASE.deleteGroup(this);
     }
 
+    public Group refresh() {
+        return MultiChats.DATABASE.getGroup(name);
+    }
+
 
     public boolean checkAccess(UUID uuid) {
         return MultiChats.DATABASE.checkAccess(this, uuid);
+    }
+
+    public boolean checkAccess(UUID uuid, GroupPermissionLevel permissionLevel) {
+        return MultiChats.DATABASE.getPermissionLevel(this, uuid).dbInt >= permissionLevel.dbInt;
     }
 
     public boolean checkManager(UUID uuid) {
@@ -47,24 +55,41 @@ public class Group {
         return MultiChats.DATABASE.getPermissionLevel(this, uuid) == GroupPermissionLevel.OWNER;
     }
 
-
-    public void addMember(UUID uuid) {
-        addMember(uuid, GroupPermissionLevel.MEMBER, false);
+    public boolean checkPrimary(UUID uuid) {
+        return MultiChats.DATABASE.checkPrimary(this, uuid);
     }
 
-    public void addMember(UUID uuid, boolean makePrimary) {
-        addMember(uuid, GroupPermissionLevel.MEMBER, makePrimary);
+
+    public HashMap<UUID, GroupPermissionLevel> getMembers() {
+        return MultiChats.DATABASE.getMembers(this);
     }
 
-    public void addMember(UUID uuid, GroupPermissionLevel permissionLevel) {
-        addMember(uuid, permissionLevel, false);
+    public HashMap<UUID, GroupPermissionLevel> getMembers(GroupPermissionLevel exactPermissionLevel) {
+        return MultiChats.DATABASE.getMembers(this, exactPermissionLevel);
     }
 
-    public void addMember(UUID uuid, GroupPermissionLevel permissionLevel, boolean makePrimary) {
-        MultiChats.DATABASE.addUserToGroup(uuid, this, makePrimary, permissionLevel);
+
+    public boolean addMember(UUID uuid) {
+        return addMember(uuid, GroupPermissionLevel.MEMBER, false);
     }
 
-    public void removeMember(UUID uuid) {
-        MultiChats.DATABASE.removeUserFromGroup(uuid, this);
+    public boolean addMember(UUID uuid, boolean makePrimary) {
+        return addMember(uuid, GroupPermissionLevel.MEMBER, makePrimary);
+    }
+
+    public boolean addMember(UUID uuid, GroupPermissionLevel permissionLevel) {
+        return addMember(uuid, permissionLevel, this.checkPrimary(uuid));
+    }
+
+    public boolean addMember(UUID uuid, GroupPermissionLevel permissionLevel, boolean makePrimary) {
+        return MultiChats.DATABASE.addUserToGroup(uuid, this, makePrimary, permissionLevel);
+    }
+
+    public boolean removeMember(UUID uuid) {
+        return MultiChats.DATABASE.removeUserFromGroup(uuid, this);
+    }
+
+    public boolean changeOwner(UUID uuid) {
+        return MultiChats.DATABASE.changeGroupOwner(this, uuid);
     }
 }
