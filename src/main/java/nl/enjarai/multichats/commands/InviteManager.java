@@ -15,8 +15,10 @@ public class InviteManager {
 
     public Invite hasInvites(UUID uuid) {
         Invite invite = invites.get(uuid);
-        invite.group = invite.group.refresh();
-        invites.remove(uuid);
+        if (invite != null) {
+            invite.group = invite.group.refresh();
+            invites.remove(uuid);
+        }
         return invite;
     }
 

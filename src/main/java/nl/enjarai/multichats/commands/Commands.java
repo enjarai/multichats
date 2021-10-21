@@ -1,5 +1,6 @@
 package nl.enjarai.multichats.commands;
 
+import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
@@ -15,15 +16,14 @@ import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
+import net.minecraft.util.UserCache;
 import nl.enjarai.multichats.ConfigManager;
 import nl.enjarai.multichats.MultiChats;
 import nl.enjarai.multichats.PlayerChatTracker;
 import nl.enjarai.multichats.types.Group;
 import nl.enjarai.multichats.types.GroupPermissionLevel;
 
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Predicate;
 
 import static net.minecraft.command.CommandSource.suggestMatching;
@@ -75,6 +75,7 @@ public class Commands {
             );
             LiteralCommandNode<ServerCommandSource> alliance = dispatcher.register(literal("alliance")
                 .requires(Permissions.require("multichats.commands.alliance", true))
+                .executes(Commands::help)
                 .then(literal("create")
                     .requires(Permissions.require("multichats.commands.alliance.create", true))
                     .then(argument("name", StringArgumentType.string())
@@ -82,7 +83,7 @@ public class Commands {
                     )
                 )
                 .then(literal("delete")
-                    .requires(inGroupPredicate(GroupPermissionLevel.OWNER))
+                    // .requires(inGroupPredicate(GroupPermissionLevel.OWNER))
                     .then(argument("name", StringArgumentType.string())
                         .executes(Commands::deleteGroup)
                         .suggests((ctx, builder) -> CommandSource.suggestMatching(
@@ -92,7 +93,7 @@ public class Commands {
                     )
                 )
                 .then(literal("invite")
-                    .requires(inGroupPredicate(GroupPermissionLevel.MANAGER))
+                    // .requires(inGroupPredicate(GroupPermissionLevel.MANAGER))
                     .then(argument("name", StringArgumentType.string())
                         .suggests((ctx, builder) -> CommandSource.suggestMatching(
                                 Permissions.check(ctx.getSource(), "multichats.admin.invite") ?
@@ -103,6 +104,18 @@ public class Commands {
                         )
                     )
                 )
+                .then(literal("kick")
+                    // .requires(inGroupPredicate(GroupPermissionLevel.MANAGER))
+                    .then(argument("name", StringArgumentType.string())
+                        .suggests((ctx, builder) -> CommandSource.suggestMatching(
+                            Permissions.check(ctx.getSource(), "multichats.admin.kick") ?
+                                    DATABASE.getGroupNames() :
+                                    DATABASE.getGroupNames(ctx.getSource().getPlayer().getUuid(), GroupPermissionLevel.MANAGER), builder))
+                        .then(playerArgument("player")
+                            .executes(Commands::kickFromGroup)
+                        )
+                    )
+                )
                 .then(literal("accept")
                     .executes(ctx -> acceptInvite(ctx, true))
                 )
@@ -110,22 +123,29 @@ public class Commands {
                     .executes(ctx -> acceptInvite(ctx, false))
                 )
                 .then(literal("leave")
-                    .requires(inGroupPredicate())
+                    // .requires(inGroupPredicate())
                     .then(argument("name", StringArgumentType.string())
                         .suggests((ctx, builder) -> CommandSource.suggestMatching(
                                 DATABASE.getGroupNames(ctx.getSource().getPlayer().getUuid()), builder))
                         .executes(Commands::leaveGroup)
                     )
                 )
-                    .then(literal("list")
-                            .then(argument("name", StringArgumentType.string())
-                                    .suggests((ctx, builder) -> CommandSource.suggestMatching(
-                                            DATABASE.getGroupNames(), builder))
-                                    .executes(Commands::listGroupMembers) // TODO: SERVER.getUserCache().getByUuid(uuid).orElse(null)
-                            )
+                .then(literal("list")
+                    .then(argument("name", StringArgumentType.string())
+                        .suggests((ctx, builder) -> CommandSource.suggestMatching(
+                                DATABASE.getGroupNames(), builder))
+                        .executes(Commands::listGroupMembers)
                     )
+                )
+                .then(literal("primary")
+                    .then(argument("name", StringArgumentType.string())
+                        .suggests((ctx, builder) -> CommandSource.suggestMatching(
+                                DATABASE.getGroupNames(ctx.getSource().getPlayer().getUuid()), builder))
+                        .executes(Commands::setPrimaryGroup)
+                    )
+                )
                 .then(literal("modify")
-                    .requires(inGroupPredicate(GroupPermissionLevel.OWNER))
+                    // .requires(inGroupPredicate(GroupPermissionLevel.OWNER))
                     .then(argument("name", StringArgumentType.string())
                         .suggests((ctx, builder) -> CommandSource.suggestMatching(
                                 Permissions.check(ctx.getSource(), "multichats.admin.modify") ?
@@ -144,22 +164,64 @@ public class Commands {
                                     )
                                     .then(literal("remove")
                                             .then(playerArgument("player")
-                                                    .executes(ctx -> modifyGroup(ctx, ModificationType.ADD_MANAGER))
+                                                    .executes(ctx -> modifyGroup(ctx, ModificationType.REMOVE_MANAGER))
                                             )
                                     )
                             )
-                        .then(literal("prefix")
+                        .then(literal("messagePrefix")
                             .then(argument("string", StringArgumentType.string())
                                 .executes(ctx -> modifyGroup(ctx, ModificationType.PREFIX))
+                            )
+                        )
+                        .then(literal("displayName")
+                            .then(argument("string", StringArgumentType.string())
+                                .executes(ctx -> modifyGroup(ctx, ModificationType.DISPLAY_NAME))
+                            )
+                        )
+                        .then(literal("displayNameShort")
+                            .then(argument("string", StringArgumentType.string())
+                                .executes(ctx -> modifyGroup(ctx, ModificationType.DISPLAY_NAME_SHORT))
                             )
                         )
                     )
                 )
             );
             dispatcher.register(literal("al")
+                .executes(Commands::help)
                 .redirect(alliance)
             );
         });
+    }
+
+    private static int help(CommandContext<ServerCommandSource> ctx) {
+        ctx.getSource().sendFeedback(TextParser.parse(
+                "<dark_aqua><bold>MultiChats v" + VERSION + " by enjarai</bold>\n<aqua>" +
+                        "  This command is used to manage your alliances,\n" +
+                        "  this is a custom feature designed to help manage\n" +
+                        "  cities and player groups.\n" +
+                        "  \n" +
+                        "  Anyone can create and own a single alliance, but\n" +
+                        "  you can join as many as you want. The alliance\n" +
+                        "  displayed in the tab menu is always your\n" +
+                        "  primary alliance, which can be set manually\n" +
+                        "  using <white>/alliance primary</white>.\n" +
+                        "  \n" +
+                        "  Every alliance has a separate chatroom in the\n" +
+                        "  ingame chat, which can be accessed using\n" +
+                        "  <white>/switchchat</white> or <white>/sc</white>.\n" +
+                        "  You can also prefix your message with the\n" +
+                        "  message prefix set by the alliance owner.\n" +
+                        "  \n" +
+                        "  By default only the alliance owner can invite\n" +
+                        "  new players to an alliance, but they can assign\n" +
+                        "  managers who can also invite new players.\n" +
+                        "  \n" +
+                        "  Lastly, alliance owners can set a display name and\n" +
+                        "  short display name that will show up in various\n" +
+                        "  places. These settings support the\n" +
+                        "  formatting found <blue><underlined><url:'https://placeholders.pb4.eu/user/text-format/'>here</url></underlined></blue>"
+        ), true);
+        return 0;
     }
 
 
@@ -174,7 +236,7 @@ public class Commands {
             return 1;
         }
 
-        if (DATABASE.getGroups(player.getUuid(), GroupPermissionLevel.OWNER) != null) {
+        if (!DATABASE.getGroups(player.getUuid(), GroupPermissionLevel.OWNER).isEmpty()) {
             ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.cantOwnTwoGroupsError), true);
             return 1;
         }
@@ -257,6 +319,11 @@ public class Commands {
         ServerPlayerEntity inviteTo = SERVER.getPlayerManager().getPlayer(playerName);
         if (inviteTo == null) {
             ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.cantFindPlayerError), true);
+            return 1;
+        }
+
+        if (group.checkAccess(inviteTo.getUuid())) {
+            ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.inGroupError), true);
             return 1;
         }
 
@@ -434,7 +501,7 @@ public class Commands {
 
                 switch (type) {
                     case SET_OWNER -> {
-                        if (DATABASE.getGroups(uuid, GroupPermissionLevel.OWNER) != null) {
+                        if (!DATABASE.getGroups(uuid, GroupPermissionLevel.OWNER).isEmpty()) {
                             error = CONFIG.messages.cantOwnTwoGroupsError;
                             break;
                         }
@@ -481,7 +548,90 @@ public class Commands {
         return 0;
     }
 
+    private static int kickFromGroup(CommandContext<ServerCommandSource> ctx) {
+        String name = ctx.getArgument("name", String.class);
+        String playerName = ctx.getArgument("player", String.class);
+
+        ServerPlayerEntity sourcePlayer = CommandHelpers.checkPlayer(ctx);
+        if (sourcePlayer == null) { return 1; }
+
+        Group group = DATABASE.getGroup(name);
+        if (group == null) {
+            ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.noGroupError), true);
+            return 1;
+        }
+
+        if (!(group.checkManager(sourcePlayer.getUuid()) || Permissions.check(sourcePlayer, "multichats.admin.kick"))) {
+            ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.noPermissionError), true);
+            return 1;
+        }
+
+        GameProfile kickPlayer = SERVER.getUserCache().findByName(playerName).orElse(null);
+        if (kickPlayer == null) {
+            ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.cantFindPlayerError), true);
+            return 1;
+        }
+
+        if (!group.checkAccess(kickPlayer.getId())) {
+            ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.playerNotInGroupError), true);
+            return 1;
+        }
+
+        DATABASE.removeUserFromGroup(kickPlayer.getId(), group);
+
+
+        HashMap<String, Text> placeholders = new HashMap<>();
+
+        placeholders.put("player", new LiteralText(kickPlayer.getName()));
+        placeholders.put("group", group.displayName);
+
+        ctx.getSource().sendFeedback(PlaceholderAPI.parsePredefinedText(
+                TextParser.parse(CONFIG.messages.groupMemberKicked),
+                PlaceholderAPI.PREDEFINED_PLACEHOLDER_PATTERN,
+                placeholders
+        ), true);
+        return 0;
+    }
+
     private static int listGroupMembers(CommandContext<ServerCommandSource> ctx) {
+        String name = ctx.getArgument("name", String.class);
+
+        Group group = DATABASE.getGroup(name);
+        if (group == null) {
+            ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.noGroupError), true);
+            return 1;
+        }
+
+        HashMap<String, Text> p1 = new HashMap<>();
+
+        p1.put("group", group.displayName);
+
+        ctx.getSource().sendFeedback(PlaceholderAPI.parsePredefinedText(
+                TextParser.parse(CONFIG.messages.groupMemberList),
+                PlaceholderAPI.PREDEFINED_PLACEHOLDER_PATTERN,
+                p1
+        ), true);
+
+        UserCache cache = SERVER.getUserCache();
+        for (Map.Entry<UUID, GroupPermissionLevel> set : group.getMembers().entrySet()) {
+            GameProfile player = cache.getByUuid(set.getKey()).orElse(null);
+            if (player == null) { continue; }
+
+            HashMap<String, Text> p2 = new HashMap<>();
+
+            p2.put("permissionLevel", TextParser.parse(set.getValue().displayName));
+            p2.put("player", new LiteralText(player.getName()));
+
+            ctx.getSource().sendFeedback(PlaceholderAPI.parsePredefinedText(
+                    TextParser.parse(CONFIG.messages.groupMemberListEntry),
+                    PlaceholderAPI.PREDEFINED_PLACEHOLDER_PATTERN,
+                    p2
+            ), true);
+        }
+        return 0;
+    }
+
+    private static int setPrimaryGroup(CommandContext<ServerCommandSource> ctx) {
         String name = ctx.getArgument("name", String.class);
 
         ServerPlayerEntity player = CommandHelpers.checkPlayer(ctx);
@@ -493,6 +643,15 @@ public class Commands {
             return 1;
         }
 
+        if (!(group.checkAccess(player.getUuid()))) {
+            ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.notInGroupError), true);
+            return 1;
+        }
+
+        if (!(DATABASE.changePrimaryGroup(player.getUuid(), group))) {
+            ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.unknownError), true);
+            return 1;
+        }
 
 
         HashMap<String, Text> placeholders = new HashMap<>();
@@ -500,7 +659,7 @@ public class Commands {
         placeholders.put("group", group.displayName);
 
         ctx.getSource().sendFeedback(PlaceholderAPI.parsePredefinedText(
-                TextParser.parse(CONFIG.messages.groupDeleted),
+                TextParser.parse(CONFIG.messages.groupSetToPrimary),
                 PlaceholderAPI.PREDEFINED_PLACEHOLDER_PATTERN,
                 placeholders
         ), true);

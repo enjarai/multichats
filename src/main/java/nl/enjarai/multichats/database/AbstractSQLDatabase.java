@@ -293,6 +293,8 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
         try {
             Group currentPrimary = getPrimaryGroup(uuid);
 
+            removeUserFromGroup(uuid, group);
+
             PreparedStatement prepStmt = CONNECTION.prepareStatement(
                     "INSERT OR REPLACE INTO Users VALUES (NULL, ?, ?, ?, ?);");
             prepStmt.setString(1, uuid.toString());

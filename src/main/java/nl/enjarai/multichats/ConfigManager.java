@@ -2,11 +2,9 @@ package nl.enjarai.multichats;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import nl.enjarai.multichats.types.Group;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 
 public class ConfigManager {
     private static final Gson gson = new GsonBuilder()
@@ -22,6 +20,7 @@ public class ConfigManager {
 
     public Messages messages = new Messages();
     public static class Messages {
+        // Errors
         public String unknownError = "<red>By some wizardry you've found an error message that shouldn't be seen!\nplease contact enjarai on the disc because this is a bug";
         public String noPlayerError = "<red>This command should be executed by a player";
         public String noPermissionChatError = "<red>You dont have permission to access that chat";
@@ -29,6 +28,7 @@ public class ConfigManager {
         public String noGroupError = "<red>This alliance does not exist";
         public String noInvitesError = "<red>You have no open invites";
         public String notInGroupError = "<red>You arent part of that alliance";
+        public String inGroupError = "<red>That player is already part of that alliance";
         public String cantFindPlayerError = "<red>Couldn't find that player";
         public String existsError = "<red>This alliance already exists";
         public String groupOwnerCantLeaveError = "<red>The alliance owner cant leave the alliance";
@@ -36,12 +36,14 @@ public class ConfigManager {
         public String playerNotInGroupError = "<red>That player is not a part of this alliance";
         public String alreadyManagerError = "<red>That player is already a manager";
         public String notManagerError = "<red>That player is not a manager";
+        // General messages
         public String switched = "<dark_aqua>Switched chat to <yellow>${group}</yellow>";
         public String switchedPrefix = "<dark_aqua>You can also prefix your message with \"<yellow>${prefix}</yellow>\" to send it to this chat";
         public String switchedGlobal = "<dark_aqua>Switched to global chat";
         public String groupCreated = "<dark_aqua>Successfully created the alliance <yellow>${group}</yellow>!\nAdd members with <white>/alliance invite</white> and \nchange settings with <white>/alliance modify</white>.";
         public String groupDeleted = "<dark_aqua>The alliance <yellow>${group}</yellow> was deleted.";
         public String groupLeft = "<dark_aqua>You left <yellow>${group}</yellow>.";
+        public String groupSetToPrimary = "<dark_aqua>Set <yellow>${group}</yellow> as your primary alliance.";
         public String sentInvite = "<dark_aqua><yellow>${playerTo}</yellow> was invited to <yellow>${group}</yellow>,\nthey can accept with <white>/alliance accept</white>";
         public String receivedInvite = "<dark_aqua>You received an invite from <yellow>${playerFrom}</yellow> to join <yellow>${group}</yellow>\n<green><hover:Click here to accept><run_cmd:'/alliance accept'>[Accept]</run_cmd></hover></green> <red><hover:Click here to deny><run_cmd:'/alliance deny'>[Deny]</run_cmd></hover></red>";
         public String inviteAcceptedFrom = "<dark_aqua><yellow>${playerTo}</yellow> has <green>accepted</green> your invite!";
@@ -54,6 +56,9 @@ public class ConfigManager {
         public String modifyPrefix = "<dark_aqua>Set the prefix of <yellow>${group}</yellow> to <yellow>${string}</yellow>.";
         public String modifyDisplayName = "<dark_aqua>Set the display name of <yellow>${group}</yellow> to <yellow>${string}</yellow>.";
         public String modifyDisplayNameShort = "<dark_aqua>Set the short display name of <yellow>${group}</yellow> to <yellow>${string}</yellow>.";
+        public String groupMemberList = "<dark_aqua><yellow>${group}</yellow> has the following members:";
+        public String groupMemberListEntry = "<aqua>  ${permissionLevel}: <yellow>${player}</yellow>";
+        public String groupMemberKicked = "<dark_aqua><yellow>${player}</yellow> was kicked from <yellow>${group}</yellow>.";
     }
 
     // Reading and saving

@@ -21,6 +21,7 @@ public class Predicates {
                 return Permissions.check(player, "multichats.admin") ||
                         !DATABASE.getGroups(player.getPlayer().getUuid(), permissionLevel).isEmpty();
             } catch (CommandSyntaxException e) {
+                e.printStackTrace();
                 return false;
             }
         };
@@ -36,6 +37,7 @@ public class Predicates {
                 return Permissions.check(player, "multichats.admin") ||
                         group.checkAccess(player.getPlayer().getUuid(), permissionLevel);
             } catch (CommandSyntaxException e) {
+                e.printStackTrace();
                 return false;
             }
         };

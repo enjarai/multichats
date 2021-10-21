@@ -3,7 +3,7 @@ package nl.enjarai.multichats.types;
 public enum GroupPermissionLevel {
     MEMBER(0, false, "<green>MEMBER"),
     MANAGER(1, true, "<blue>MANAGER"),
-    OWNER(2, true, "<purple>OWNER");
+    OWNER(2, true, "<light_purple>OWNER");
 
     public final int dbInt;
     public final boolean canManage;

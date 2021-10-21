@@ -24,8 +24,11 @@ public class MultiChats implements ModInitializer {
 	// That way, it's clear which mod wrote info, warnings, and errors.
 	public static final Logger LOGGER = LogManager.getLogger("MultiChats");
 	public static MinecraftServer SERVER;
+
+	public static final String VERSION = "2.0.1";
 	public static final File CONFIG_FILE = new File("config/multichats.json");
 	public static final String DATABASE_FILE ="config/multichats.db";
+
 	public static ConfigManager CONFIG = ConfigManager.loadConfigFile(CONFIG_FILE);
 	public static DatabaseHandlerInterface DATABASE;
 
