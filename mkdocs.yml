@@ -10,17 +10,25 @@ theme:
     repo: fontawesome/brands/github
   palette:
     - media: "(prefers-color-scheme: dark)"
-      primary: slate gray
       scheme: slate
+      primary: teal
+      accent: teal
+      features:
+        - navigation.expand
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
-    - media: "(prefers-color-scheme: dark)"
-      primary: slate gray
+    - media: "(prefers-color-scheme: light)"
       scheme: default
+      primary: teal
+      accent: teal
+      features:
+        - navigation.expand
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
+        
+  
 
 plugins:
   - search
