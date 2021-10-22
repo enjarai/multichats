@@ -39,7 +39,7 @@ public class ServerPlayNetworkHandlerMixin {
 		// Check for prefixes
 
 		for (Group group : MultiChats.DATABASE.getGroups(player.getUuid())) {
-			if (group.prefix != null && message.startsWith(group.prefix)) {
+			if (group.prefix != null && message.toLowerCase().startsWith(group.prefix)) {
 				Helpers.sendToChat(group, player, message.substring(group.prefix.length()));
 				info.cancel();
 				return;

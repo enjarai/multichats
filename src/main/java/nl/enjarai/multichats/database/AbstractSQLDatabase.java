@@ -339,10 +339,12 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
             prepStmt.setString(1, uuid.toString());
             prepStmt.executeUpdate();
 
-            prepStmt = CONNECTION.prepareStatement("UPDATE Users SET isPrimary=true WHERE uuid=? AND groupName=?;");
-            prepStmt.setString(1, uuid.toString());
-            prepStmt.setString(2, group.name);
-            prepStmt.executeUpdate();
+            if (group != null) {
+                prepStmt = CONNECTION.prepareStatement("UPDATE Users SET isPrimary=true WHERE uuid=? AND groupName=?;");
+                prepStmt.setString(1, uuid.toString());
+                prepStmt.setString(2, group.name);
+                prepStmt.executeUpdate();
+            }
 
         } catch (Exception e) {
             e.printStackTrace();

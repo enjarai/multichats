@@ -7,6 +7,7 @@ public enum ModificationType {
     ADD_MANAGER("player", false, MultiChats.CONFIG.messages.modifyAddManager),
     REMOVE_MANAGER("player", false, MultiChats.CONFIG.messages.modifyRemoveManager),
     PREFIX("string", false, MultiChats.CONFIG.messages.modifyPrefix),
+    PREFIX_RESET(null, false, MultiChats.CONFIG.messages.resetPrefix),
     DISPLAY_NAME("string", true, MultiChats.CONFIG.messages.modifyDisplayName),
     DISPLAY_NAME_SHORT("string", true, MultiChats.CONFIG.messages.modifyDisplayNameShort);
 

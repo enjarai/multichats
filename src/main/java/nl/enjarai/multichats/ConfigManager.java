@@ -45,6 +45,7 @@ public class ConfigManager {
         public String groupDeleted = "<dark_aqua>The alliance <yellow>${group}</yellow> was deleted.";
         public String groupLeft = "<dark_aqua>You left <yellow>${group}</yellow>.";
         public String groupSetToPrimary = "<dark_aqua>Set <yellow>${group}</yellow> as your primary alliance.";
+        public String groupPrimaryReset = "<dark_aqua>Reset your primary alliance.";
         public String sentInvite = "<dark_aqua><yellow>${playerTo}</yellow> was invited to <yellow>${group}</yellow>,\nthey can accept with <white>/alliance accept</white>";
         public String receivedInvite = "<dark_aqua>You received an invite from <yellow>${playerFrom}</yellow> to join <yellow>${group}</yellow>\n<green><hover:Click here to accept><run_cmd:'/alliance accept'>[Accept]</run_cmd></hover></green> <red><hover:Click here to deny><run_cmd:'/alliance deny'>[Deny]</run_cmd></hover></red>";
         public String inviteAcceptedFrom = "<dark_aqua><yellow>${playerTo}</yellow> has <green>accepted</green> your invite!";
@@ -57,6 +58,7 @@ public class ConfigManager {
         public String modifyPrefix = "<dark_aqua>Set the prefix of <yellow>${group}</yellow> to <yellow>${string}</yellow>.";
         public String modifyDisplayName = "<dark_aqua>Set the display name of <yellow>${group}</yellow> to <yellow>${string}</yellow>.";
         public String modifyDisplayNameShort = "<dark_aqua>Set the short display name of <yellow>${group}</yellow> to <yellow>${string}</yellow>.";
+        public String resetPrefix = "<dark_aqua>The prefix of <yellow>${group}</yellow> has been reset.";
         public String groupMemberList = "<dark_aqua><yellow>${group}</yellow> has the following members:";
         public String groupMemberListEntry = "<aqua>  ${permissionLevel}: <yellow>${player}</yellow>";
         public String groupMemberKicked = "<dark_aqua><yellow>${player}</yellow> was kicked from <yellow>${group}</yellow>.";

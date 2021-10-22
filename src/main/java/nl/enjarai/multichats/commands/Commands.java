@@ -25,6 +25,7 @@ import nl.enjarai.multichats.types.GroupPermissionLevel;
 
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 import static net.minecraft.command.CommandSource.suggestMatching;
 import static net.minecraft.server.command.CommandManager.argument;
@@ -138,10 +139,15 @@ public class Commands {
                     )
                 )
                 .then(literal("primary")
-                    .then(argument("name", StringArgumentType.string())
-                        .suggests((ctx, builder) -> CommandSource.suggestMatching(
-                                DATABASE.getGroupNames(ctx.getSource().getPlayer().getUuid()), builder))
-                        .executes(Commands::setPrimaryGroup)
+                    .then(literal("reset")
+                        .executes(ctx -> setPrimaryGroup(ctx, true))
+                    )
+                    .then(literal("set")
+                        .then(argument("name", StringArgumentType.string())
+                            .suggests((ctx, builder) -> CommandSource.suggestMatching(
+                                    DATABASE.getGroupNames(ctx.getSource().getPlayer().getUuid()), builder))
+                            .executes(ctx -> setPrimaryGroup(ctx, false))
+                        )
                     )
                 )
                 .then(literal("modify")
@@ -156,21 +162,26 @@ public class Commands {
                                 .executes(ctx -> modifyGroup(ctx, ModificationType.SET_OWNER))
                             )
                         )
-                            .then(literal("manager")
-                                    .then(literal("add")
-                                            .then(playerArgument("player")
-                                                    .executes(ctx -> modifyGroup(ctx, ModificationType.ADD_MANAGER))
-                                            )
-                                    )
-                                    .then(literal("remove")
-                                            .then(playerArgument("player")
-                                                    .executes(ctx -> modifyGroup(ctx, ModificationType.REMOVE_MANAGER))
-                                            )
-                                    )
+                        .then(literal("manager")
+                            .then(literal("add")
+                                .then(playerArgument("player")
+                                    .executes(ctx -> modifyGroup(ctx, ModificationType.ADD_MANAGER))
+                                )
                             )
+                            .then(literal("remove")
+                                .then(playerArgument("player")
+                                    .executes(ctx -> modifyGroup(ctx, ModificationType.REMOVE_MANAGER))
+                                )
+                            )
+                        )
                         .then(literal("messagePrefix")
-                            .then(argument("string", StringArgumentType.string())
-                                .executes(ctx -> modifyGroup(ctx, ModificationType.PREFIX))
+                            .then(literal("reset")
+                                .executes(ctx -> modifyGroup(ctx, ModificationType.PREFIX_RESET))
+                            )
+                            .then(literal("set")
+                                .then(argument("string", StringArgumentType.string())
+                                    .executes(ctx -> modifyGroup(ctx, ModificationType.PREFIX))
+                                )
                             )
                         )
                         .then(literal("displayName")
@@ -200,27 +211,9 @@ public class Commands {
                         "  this is a custom feature designed to help manage\n" +
                         "  cities and player groups.\n" +
                         "  \n" +
-                        "  Anyone can create and own a single alliance, but\n" +
-                        "  you can join as many as you want. The alliance\n" +
-                        "  displayed in the tab menu is always your\n" +
-                        "  primary alliance, which can be set manually\n" +
-                        "  using <white>/alliance primary</white>.\n" +
-                        "  \n" +
-                        "  Every alliance has a separate chatroom in the\n" +
-                        "  ingame chat, which can be accessed using\n" +
-                        "  <white>/switchchat</white> or <white>/sc</white>.\n" +
-                        "  You can also prefix your message with the\n" +
-                        "  message prefix set by the alliance owner.\n" +
-                        "  \n" +
-                        "  By default only the alliance owner can invite\n" +
-                        "  new players to an alliance, but they can assign\n" +
-                        "  managers who can also invite new players.\n" +
-                        "  \n" +
-                        "  Lastly, alliance owners can set a display name and\n" +
-                        "  short display name that will show up in various\n" +
-                        "  places. These settings support the\n" +
-                        "  formatting found <blue><underlined><url:'https://placeholders.pb4.eu/user/text-format/'>here</url></underlined></blue>"
-        ), true);
+                        "  More information can be found at:\n" +
+                        "  <blue><underlined><url:'https://enjarai.nl/multichats/'>https://enjarai.nl/multichats/</url></underlined></blue>"
+        ), false);
         return 0;
     }
 
@@ -298,7 +291,7 @@ public class Commands {
         return 0;
     }
 
-    private static int inviteToGroup(CommandContext<ServerCommandSource> ctx) {
+    private static int inviteToGroup(CommandContext<ServerCommandSource> ctx) { // TODO: weird error, also in modify
         String name = ctx.getArgument("name", String.class);
         String playerName = ctx.getArgument("player", String.class);
 
@@ -455,76 +448,85 @@ public class Commands {
 
         boolean success = false;
         String error = null;
-        switch (type.argumentType) {
-            case "string" -> {
-                String arg = ctx.getArgument("string", String.class);
-                placeholders.put("string", type.formatStringArg ? TextParser.parse(arg) : new LiteralText(arg));
-
-                switch (type) {
-                    case PREFIX -> {
-                        if (Objects.equals(arg, "reset")) {
-                            arg = null;
-                        } else if (arg.length() > 3 || arg.length() == 0) {
-                            error = CONFIG.messages.prefixTooLongError;
-                            break;
-                        }
-
-                        group.prefix = arg;
-                        success = group.save();
-                    }
-                    case DISPLAY_NAME -> {
-                        group.displayName = TextParser.parse(arg);
-                        success = group.save();
-                    }
-                    case DISPLAY_NAME_SHORT -> {
-                        group.displayNameShort = TextParser.parse(arg);
-                        success = group.save();
-                    }
+        if (type.argumentType == null) {
+            switch (type) {
+                case PREFIX_RESET -> {
+                    group.prefix = null;
+                    success = group.save();
                 }
             }
-            case "player" -> {
-                ServerPlayerEntity arg = SERVER.getPlayerManager().getPlayer(ctx.getArgument("player", String.class));
-                if (arg == null) {
-                    ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.cantFindPlayerError), true);
-                    return 1;
-                }
+        } else {
+            switch (type.argumentType) {
+                case "string" -> {
+                    String arg = ctx.getArgument("string", String.class);
+                    placeholders.put("string", type.formatStringArg ? TextParser.parse(arg) : new LiteralText(arg));
 
-                placeholders.put("player", arg.getDisplayName());
-                UUID uuid = arg.getUuid();
-                if (!group.checkAccess(uuid)) {
-                    ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.playerNotInGroupError), true);
-                    return 1;
-                }
+                    switch (type) {
+                        case PREFIX -> {
+                            arg = arg.toLowerCase();
+                            Pattern pattern = Pattern.compile("[^a-z0-9 ]", Pattern.CASE_INSENSITIVE);
+                            if (arg.length() > 3 || arg.length() < 1 || pattern.matcher(arg).find()) {
+                                error = CONFIG.messages.prefixTooLongError;
+                                break;
+                            }
 
-                if (group.checkAccess(uuid, GroupPermissionLevel.OWNER)) {
-                    ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.noPermissionError), true);
-                    return 1;
-                }
-
-                switch (type) {
-                    case SET_OWNER -> {
-                        if (!DATABASE.getGroups(uuid, GroupPermissionLevel.OWNER).isEmpty()) {
-                            error = CONFIG.messages.cantOwnTwoGroupsError;
-                            break;
+                            group.prefix = arg + ":";
+                            success = group.save();
                         }
-
-                        success = group.changeOwner(uuid);
+                        case DISPLAY_NAME -> {
+                            group.displayName = TextParser.parse(arg);
+                            success = group.save();
+                        }
+                        case DISPLAY_NAME_SHORT -> {
+                            group.displayNameShort = TextParser.parse(arg);
+                            success = group.save();
+                        }
                     }
-                    case ADD_MANAGER -> {
-                        if (group.checkAccess(uuid, GroupPermissionLevel.MANAGER)) {
-                            error = CONFIG.messages.alreadyManagerError;
-                            break;
-                        }
-
-                        success = group.addMember(uuid, GroupPermissionLevel.MANAGER);
+                }
+                case "player" -> {
+                    ServerPlayerEntity arg = SERVER.getPlayerManager().getPlayer(ctx.getArgument("player", String.class));
+                    if (arg == null) {
+                        ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.cantFindPlayerError), true);
+                        return 1;
                     }
-                    case REMOVE_MANAGER -> {
-                        if (!group.checkAccess(uuid, GroupPermissionLevel.MANAGER)) {
-                            error = CONFIG.messages.notManagerError;
-                            break;
-                        }
 
-                        success = group.addMember(uuid, GroupPermissionLevel.MEMBER);
+                    placeholders.put("player", arg.getDisplayName());
+                    UUID uuid = arg.getUuid();
+                    if (!group.checkAccess(uuid)) {
+                        ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.playerNotInGroupError), true);
+                        return 1;
+                    }
+
+                    if (group.checkAccess(uuid, GroupPermissionLevel.OWNER)) {
+                        ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.noPermissionError), true);
+                        return 1;
+                    }
+
+                    switch (type) {
+                        case SET_OWNER -> {
+                            if (!DATABASE.getGroups(uuid, GroupPermissionLevel.OWNER).isEmpty()) {
+                                error = CONFIG.messages.cantOwnTwoGroupsError;
+                                break;
+                            }
+
+                            success = group.changeOwner(uuid);
+                        }
+                        case ADD_MANAGER -> {
+                            if (group.checkAccess(uuid, GroupPermissionLevel.MANAGER)) {
+                                error = CONFIG.messages.alreadyManagerError;
+                                break;
+                            }
+
+                            success = group.addMember(uuid, GroupPermissionLevel.MANAGER);
+                        }
+                        case REMOVE_MANAGER -> {
+                            if (!group.checkAccess(uuid, GroupPermissionLevel.MANAGER)) {
+                                error = CONFIG.messages.notManagerError;
+                                break;
+                            }
+
+                            success = group.addMember(uuid, GroupPermissionLevel.MEMBER);
+                        }
                     }
                 }
             }
@@ -576,6 +578,11 @@ public class Commands {
 
         if (!group.checkAccess(kickPlayer.getId())) {
             ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.playerNotInGroupError), true);
+            return 1;
+        }
+
+        if (group.checkManager(kickPlayer.getId())) {
+            ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.noPermissionError), true);
             return 1;
         }
 
@@ -633,35 +640,42 @@ public class Commands {
         return 0;
     }
 
-    private static int setPrimaryGroup(CommandContext<ServerCommandSource> ctx) {
-        String name = ctx.getArgument("name", String.class);
-
+    private static int setPrimaryGroup(CommandContext<ServerCommandSource> ctx, boolean reset) {
         ServerPlayerEntity player = CommandHelpers.checkPlayer(ctx);
         if (player == null) { return 1; }
 
-        Group group = DATABASE.getGroup(name);
-        if (group == null) {
-            ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.noGroupError), true);
-            return 1;
-        }
-
-        if (!(group.checkAccess(player.getUuid()))) {
-            ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.notInGroupError), true);
-            return 1;
-        }
-
-        if (!(DATABASE.changePrimaryGroup(player.getUuid(), group))) {
-            ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.unknownError), true);
-            return 1;
-        }
-
-
         HashMap<String, Text> placeholders = new HashMap<>();
 
-        placeholders.put("group", group.displayName);
+        if (reset) {
+            if (!(DATABASE.changePrimaryGroup(player.getUuid(), null))) {
+                ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.unknownError), true);
+                return 1;
+            }
+        } else {
+            String name = ctx.getArgument("name", String.class);
+
+            Group group = DATABASE.getGroup(name);
+            if (group == null) {
+                ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.noGroupError), true);
+                return 1;
+            }
+
+            if (!(group.checkAccess(player.getUuid()))) {
+                ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.notInGroupError), true);
+                return 1;
+            }
+
+            if (!(DATABASE.changePrimaryGroup(player.getUuid(), group))) {
+                ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.unknownError), true);
+                return 1;
+            }
+
+            placeholders.put("group", group.displayName);
+        }
+
 
         ctx.getSource().sendFeedback(PlaceholderAPI.parsePredefinedText(
-                TextParser.parse(CONFIG.messages.groupSetToPrimary),
+                TextParser.parse(reset ? CONFIG.messages.groupPrimaryReset : CONFIG.messages.groupSetToPrimary),
                 PlaceholderAPI.PREDEFINED_PLACEHOLDER_PATTERN,
                 placeholders
         ), true);
