@@ -2,6 +2,10 @@ site_name: Alliances Documentation
 
 nav:
   - index.md
+  - commands.md
+  - chatrooms-basics.md
+  - alliance-ownership.md
+  - formatting.md
 
 theme:
   name: material
