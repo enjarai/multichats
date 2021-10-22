@@ -1,11 +1,11 @@
 # Alliance Ownership
 
-Creating an alliance is covered [here]. 
+Creating an alliance is covered [on the homepage]. 
 It is recommended to only create an alliance if 
 you have or are planning to create a form of ingame player group.
 Staff might at any time delete alliances that aren't used for this purpose.
 
-[here]: index.md#Creating-an-alliance
+[on the homepage]: index.md#Creating-an-alliance
 
 ### Cosmetics
 
