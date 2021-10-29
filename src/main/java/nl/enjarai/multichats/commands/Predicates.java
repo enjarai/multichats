@@ -1,5 +1,6 @@
 package nl.enjarai.multichats.commands;
 
+import com.mojang.brigadier.context.CommandContextBuilder;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.minecraft.server.command.ServerCommandSource;
@@ -38,6 +39,16 @@ public class Predicates {
                         group.checkAccess(player.getPlayer().getUuid(), permissionLevel);
             } catch (CommandSyntaxException e) {
                 e.printStackTrace();
+                return false;
+            }
+        };
+    }
+
+    public static Predicate<ServerCommandSource> isPlayerPredicate() {
+        return source -> {
+            try {
+                return source.getPlayer() != null;
+            } catch (CommandSyntaxException e) {
                 return false;
             }
         };

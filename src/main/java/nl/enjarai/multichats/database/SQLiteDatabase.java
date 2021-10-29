@@ -8,14 +8,14 @@ public class SQLiteDatabase extends AbstractSQLDatabase {
         CONNECTION = DriverManager.getConnection("jdbc:sqlite:" + database);
 
         STATEMENT = CONNECTION.createStatement();
-        this.createTables();
+        this.init();
     }
 
     @Override
     protected String getGroupTableCreation() {
         return "CREATE TABLE IF NOT EXISTS Groups (id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "name varchar(64) NOT NULL UNIQUE, displayName varchar(128), displayNameShort varchar(128), " +
-                "prefix varchar(64))";
+                "prefix varchar(64), tpX INT, tpY INT, tpZ INT, tpDimension varchar(128))";
     }
 
     @Override

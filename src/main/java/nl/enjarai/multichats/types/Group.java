@@ -1,7 +1,15 @@
 package nl.enjarai.multichats.types;
 
+import net.minecraft.client.util.math.Vector3d;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.registry.Registry;
+import net.minecraft.util.registry.RegistryKey;
+import net.minecraft.world.World;
+import nl.enjarai.multichats.Helpers;
 import nl.enjarai.multichats.MultiChats;
 
 import java.util.HashMap;
@@ -14,6 +22,8 @@ public class Group {
 
     public String prefix = null;
     public String formatOverride = null;
+    public Vec3d homePos = null;
+    public String homeDimension = null;
 
     public Group(String name) {
         this.name = name;
@@ -23,6 +33,23 @@ public class Group {
 
     public String getFormat() {
         return formatOverride == null ? MultiChats.CONFIG.chatFormat : formatOverride;
+    }
+
+    public void setHome(Vec3d pos, String dimension) {
+        homePos = pos;
+        homeDimension = dimension;
+    }
+
+    public void setHome(int x, int y, int z, String dimension) {
+        if (Helpers.areAllEqual(0, x, y, z)) {
+            setHome(null, null);
+        } else {
+            setHome(new Vec3d(x, y, z), dimension);
+        }
+    }
+
+    public ServerWorld getHomeDim() {
+        return MultiChats.SERVER.getWorld(RegistryKey.of(Registry.WORLD_KEY, Identifier.tryParse(homeDimension)));
     }
 
 

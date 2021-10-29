@@ -8,6 +8,8 @@ public enum ModificationType {
     REMOVE_MANAGER("player", false, MultiChats.CONFIG.messages.modifyRemoveManager),
     PREFIX("string", false, MultiChats.CONFIG.messages.modifyPrefix),
     PREFIX_RESET(null, false, MultiChats.CONFIG.messages.resetPrefix),
+    SETHOME(null, false, MultiChats.CONFIG.messages.homeSet),
+    UNSETHOME(null, false, MultiChats.CONFIG.messages.homeUnset),
     DISPLAY_NAME("string", true, MultiChats.CONFIG.messages.modifyDisplayName),
     DISPLAY_NAME_SHORT("string", true, MultiChats.CONFIG.messages.modifyDisplayNameShort);
 

@@ -2,21 +2,28 @@ package nl.enjarai.multichats.database;
 
 import net.minecraft.text.Text;
 import nl.enjarai.multichats.Helpers;
+import nl.enjarai.multichats.MultiChats;
 import nl.enjarai.multichats.types.Group;
 import nl.enjarai.multichats.types.GroupPermissionLevel;
 
 import java.sql.*;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
     protected Connection CONNECTION;
     protected Statement STATEMENT;
 
+    // protected ExecutorService SERVICE = Executors.newFixedThreadPool(10);
+    // protected DatabaseCache CACHE = new DatabaseCache(600, 2);
+
 
     protected abstract String getGroupTableCreation();
     protected abstract String getUserTableCreation();
 
-    public void createTables() throws SQLException {
+    public void init() throws SQLException {
         STATEMENT.execute(getGroupTableCreation());
         STATEMENT.execute(getUserTableCreation());
     }
@@ -35,11 +42,21 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
     public boolean saveGroup(Group group) {
         try {
             PreparedStatement prepStmt = CONNECTION.prepareStatement(
-                    "INSERT OR REPLACE INTO Groups VALUES (NULL, ?, ?, ?, ?);");
+                    "INSERT OR REPLACE INTO Groups VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?);");
             prepStmt.setString(1, group.name);
             prepStmt.setString(2, Text.Serializer.toJson(group.displayName));
             prepStmt.setString(3, Text.Serializer.toJson(group.displayNameShort));
             prepStmt.setString(4, group.prefix);
+            if (group.homePos == null) {
+                prepStmt.setInt(5, 0);
+                prepStmt.setInt(6, 0);
+                prepStmt.setInt(7, 0);
+            } else {
+                prepStmt.setInt(5, (int) group.homePos.x);
+                prepStmt.setInt(6, (int) group.homePos.y);
+                prepStmt.setInt(7, (int) group.homePos.z);
+            }
+            prepStmt.setString(8, group.homeDimension);
 
             prepStmt.executeUpdate();
 
@@ -78,12 +95,9 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
 
             if (result.next()) {
                 do {
-                group = new Group(result.getString("name"));
-                group.displayName = Text.Serializer.fromJson(result.getString("displayName"));
-                group.displayNameShort = Text.Serializer.fromJson(result.getString("displayNameShort"));
-                group.prefix = result.getString("prefix");
+                    group = DatabaseHelpers.resultToGroup(result);
 
-                list.add(group);
+                    list.add(group);
                 } while (result.next());
             }
         } catch (Exception e) {
@@ -106,10 +120,7 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
 
             if (result.next()) {
                 do {
-                    group = new Group(result.getString("name"));
-                    group.displayName = Text.Serializer.fromJson(result.getString("displayName"));
-                    group.displayNameShort = Text.Serializer.fromJson(result.getString("displayNameShort"));
-                    group.prefix = result.getString("prefix");
+                    group = DatabaseHelpers.resultToGroup(result);
 
                     list.add(group);
                 } while (result.next());
@@ -135,10 +146,7 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
 
             if (result.next()) {
                 do {
-                    group = new Group(result.getString("name"));
-                    group.displayName = Text.Serializer.fromJson(result.getString("displayName"));
-                    group.displayNameShort = Text.Serializer.fromJson(result.getString("displayNameShort"));
-                    group.prefix = result.getString("prefix");
+                    group = DatabaseHelpers.resultToGroup(result);
 
                     list.add(group);
                 } while (result.next());
@@ -225,10 +233,7 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
             ResultSet result = prepStmt.executeQuery();
 
             if (result.next()) {
-                group = new Group(result.getString("name"));
-                group.displayName = Text.Serializer.fromJson(result.getString("displayName"));
-                group.displayNameShort = Text.Serializer.fromJson(result.getString("displayNameShort"));
-                group.prefix = result.getString("prefix");
+                group = DatabaseHelpers.resultToGroup(result);
             } else {
                 group = null;
             }
@@ -274,10 +279,7 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
             ResultSet result = prepStmt.executeQuery();
 
             if (result.next()) {
-                group = new Group(result.getString("name"));
-                group.displayName = Text.Serializer.fromJson(result.getString("displayName"));
-                group.displayNameShort = Text.Serializer.fromJson(result.getString("displayNameShort"));
-                group.prefix = result.getString("prefix");
+                group = DatabaseHelpers.resultToGroup(result);
             } else {
                 group = null;
             }

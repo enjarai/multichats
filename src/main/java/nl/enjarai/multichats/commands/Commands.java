@@ -1,5 +1,6 @@
 package nl.enjarai.multichats.commands;
 
+import com.google.gson.Gson;
 import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
@@ -17,6 +18,9 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
 import net.minecraft.util.UserCache;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.registry.Registry;
+import net.minecraft.util.registry.RegistryKey;
 import nl.enjarai.multichats.ConfigManager;
 import nl.enjarai.multichats.MultiChats;
 import nl.enjarai.multichats.PlayerChatTracker;
@@ -24,7 +28,6 @@ import nl.enjarai.multichats.types.Group;
 import nl.enjarai.multichats.types.GroupPermissionLevel;
 
 import java.util.*;
-import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 import static net.minecraft.command.CommandSource.suggestMatching;
@@ -38,6 +41,7 @@ public class Commands {
         CommandRegistrationCallback.EVENT.register((dispatcher, dedicated) -> {
             LiteralCommandNode<ServerCommandSource> switchchat = dispatcher.register(literal("switchchat")
                 .requires(Permissions.require("multichats.commands.switchchat", 0))
+                .requires(Predicates.isPlayerPredicate())
                 .executes(Commands::switchChatDefaultCommand)
                 .then(argument("chat", StringArgumentType.string())
                     .executes(Commands::switchChatCommand)
@@ -76,6 +80,7 @@ public class Commands {
             );
             LiteralCommandNode<ServerCommandSource> alliance = dispatcher.register(literal("alliance")
                 .requires(Permissions.require("multichats.commands.alliance", true))
+                .requires(Predicates.isPlayerPredicate())
                 .executes(Commands::help)
                 .then(literal("create")
                     .requires(Permissions.require("multichats.commands.alliance.create", true))
@@ -131,12 +136,20 @@ public class Commands {
                         .executes(Commands::leaveGroup)
                     )
                 )
-                .then(literal("list")
+                .then(literal("info")
                     .then(argument("name", StringArgumentType.string())
                         .suggests((ctx, builder) -> CommandSource.suggestMatching(
                                 DATABASE.getGroupNames(), builder))
-                        .executes(Commands::listGroupMembers)
+                        .executes(Commands::groupInfoMembers)
                     )
+                )
+                .then(literal("home")
+                    .then(argument("name", StringArgumentType.string())
+                        .suggests((ctx, builder) -> CommandSource.suggestMatching(
+                            DATABASE.getGroupNames(ctx.getSource().getPlayer().getUuid()), builder))
+                        .executes(Commands::tpHome)
+                    )
+                    .executes(Commands::tpHome)
                 )
                 .then(literal("primary")
                     .then(literal("reset")
@@ -194,6 +207,14 @@ public class Commands {
                                 .executes(ctx -> modifyGroup(ctx, ModificationType.DISPLAY_NAME_SHORT))
                             )
                         )
+                        .then(literal("home")
+                                .then(literal("unset")
+                                        .executes(ctx -> modifyGroup(ctx, ModificationType.UNSETHOME))
+                                )
+                                .then(literal("set")
+                                        .executes(ctx -> modifyGroup(ctx, ModificationType.SETHOME))
+                                )
+                        )
                     )
                 )
             );
@@ -218,11 +239,11 @@ public class Commands {
     }
 
 
-    private static int createGroup(CommandContext<ServerCommandSource> ctx) {
+    private static int createGroup(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
         String name = ctx.getArgument("name", String.class);
 
-        ServerPlayerEntity player = CommandHelpers.checkPlayer(ctx);
-        if (player == null) { return 1; }
+        ServerPlayerEntity player = ctx.getSource().getPlayer();
+        
 
         if (DATABASE.getGroup(name) != null) {
             ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.existsError), true);
@@ -256,11 +277,11 @@ public class Commands {
         return 0;
     }
 
-    private static int deleteGroup(CommandContext<ServerCommandSource> ctx) {
+    private static int deleteGroup(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
         String name = ctx.getArgument("name", String.class);
 
-        ServerPlayerEntity player = CommandHelpers.checkPlayer(ctx);
-        if (player == null) { return 1; }
+        ServerPlayerEntity player = ctx.getSource().getPlayer();
+        
 
         Group group = DATABASE.getGroup(name);
         if (group == null) {
@@ -268,7 +289,7 @@ public class Commands {
             return 1;
         }
 
-        if (!(group.checkOwner(player.getUuid()) || Permissions.check(player, "multichats.admin.delete"))) {
+        if (!(Permissions.check(player, "multichats.admin.delete") || group.checkOwner(player.getUuid()))) {
             ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.noPermissionError), true);
             return 1;
         }
@@ -291,11 +312,11 @@ public class Commands {
         return 0;
     }
 
-    private static int inviteToGroup(CommandContext<ServerCommandSource> ctx) { // TODO: weird error, also in modify
+    private static int inviteToGroup(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
         String name = ctx.getArgument("name", String.class);
         String playerName = ctx.getArgument("player", String.class);
 
-        ServerPlayerEntity inviteFrom = CommandHelpers.checkPlayer(ctx);
+        ServerPlayerEntity inviteFrom = ctx.getSource().getPlayer();
         if (inviteFrom == null) { return 1; }
 
         Group group = DATABASE.getGroup(name);
@@ -304,7 +325,7 @@ public class Commands {
             return 1;
         }
 
-        if (!(group.checkManager(inviteFrom.getUuid()) || Permissions.check(inviteFrom, "multichats.admin.invite"))) {
+        if (!(Permissions.check(inviteFrom, "multichats.admin.invite") || group.checkManager(inviteFrom.getUuid()))) {
             ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.noPermissionError), true);
             return 1;
         }
@@ -342,9 +363,9 @@ public class Commands {
         return 0;
     }
 
-    private static int acceptInvite(CommandContext<ServerCommandSource> ctx, boolean accept) {
-        ServerPlayerEntity player = CommandHelpers.checkPlayer(ctx);
-        if (player == null) { return 1; }
+    private static int acceptInvite(CommandContext<ServerCommandSource> ctx, boolean accept) throws CommandSyntaxException {
+        ServerPlayerEntity player = ctx.getSource().getPlayer();
+        
 
         InviteManager.Invite invite = INVITE_MANAGER.hasInvites(player.getUuid());
         if (invite == null) {
@@ -387,11 +408,11 @@ public class Commands {
         return 0;
     }
 
-    private static int leaveGroup(CommandContext<ServerCommandSource> ctx) {
+    private static int leaveGroup(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
         String name = ctx.getArgument("name", String.class);
 
-        ServerPlayerEntity player = CommandHelpers.checkPlayer(ctx);
-        if (player == null) { return 1; }
+        ServerPlayerEntity player = ctx.getSource().getPlayer();
+        
 
         Group group = DATABASE.getGroup(name);
         if (group == null) {
@@ -427,11 +448,10 @@ public class Commands {
         return 0;
     }
 
-    private static int modifyGroup(CommandContext<ServerCommandSource> ctx, ModificationType type) {
+    private static int modifyGroup(CommandContext<ServerCommandSource> ctx, ModificationType type) throws CommandSyntaxException {
         String name = ctx.getArgument("name", String.class);
 
-        ServerPlayerEntity player = CommandHelpers.checkPlayer(ctx);
-        if (player == null) { return 1; }
+        ServerPlayerEntity player = ctx.getSource().getPlayer();
 
         Group group = DATABASE.getGroup(name);
         if (group == null) {
@@ -439,7 +459,7 @@ public class Commands {
             return 1;
         }
 
-        if (!(group.checkAccess(player.getUuid(), GroupPermissionLevel.OWNER) || Permissions.check(player, "multichats.admin.modify"))) {
+        if (!(Permissions.check(player, "multichats.admin.modify") || group.checkOwner(player.getUuid()))) {
             ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.noPermissionError), true);
             return 1;
         }
@@ -452,6 +472,20 @@ public class Commands {
             switch (type) {
                 case PREFIX_RESET -> {
                     group.prefix = null;
+                    success = group.save();
+                }
+                case SETHOME -> {
+                    if (group.getMembers().size() >= CONFIG.membersRequiredForHome) {
+                        Vec3d pos = player.getPos();
+                        group.setHome((int) Math.floor(pos.x), (int) Math.floor(pos.y), (int) Math.floor(pos.z),
+                                player.getServerWorld().getRegistryKey().getValue().toString());
+                        success = group.save();
+                    } else {
+                        error = CONFIG.messages.notEligibleForHomeError;
+                    }
+                }
+                case UNSETHOME -> {
+                    group.setHome(null, null);
                     success = group.save();
                 }
             }
@@ -552,11 +586,11 @@ public class Commands {
         return 0;
     }
 
-    private static int kickFromGroup(CommandContext<ServerCommandSource> ctx) {
+    private static int kickFromGroup(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
         String name = ctx.getArgument("name", String.class);
         String playerName = ctx.getArgument("player", String.class);
 
-        ServerPlayerEntity sourcePlayer = CommandHelpers.checkPlayer(ctx);
+        ServerPlayerEntity sourcePlayer = ctx.getSource().getPlayer();
         if (sourcePlayer == null) { return 1; }
 
         Group group = DATABASE.getGroup(name);
@@ -565,7 +599,7 @@ public class Commands {
             return 1;
         }
 
-        if (!(group.checkManager(sourcePlayer.getUuid()) || Permissions.check(sourcePlayer, "multichats.admin.kick"))) {
+        if (!(Permissions.check(sourcePlayer, "multichats.admin.kick") || group.checkManager(sourcePlayer.getUuid()))) {
             ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.noPermissionError), true);
             return 1;
         }
@@ -602,7 +636,7 @@ public class Commands {
         return 0;
     }
 
-    private static int listGroupMembers(CommandContext<ServerCommandSource> ctx) {
+    private static int groupInfoMembers(CommandContext<ServerCommandSource> ctx) {
         String name = ctx.getArgument("name", String.class);
 
         Group group = DATABASE.getGroup(name);
@@ -611,9 +645,25 @@ public class Commands {
             return 1;
         }
 
+        HashMap<UUID, GroupPermissionLevel> members = group.getMembers();
         HashMap<String, Text> p1 = new HashMap<>();
 
         p1.put("group", group.displayName);
+        p1.put("prefix", new LiteralText(group.prefix));
+        p1.put("home", new LiteralText( // this is a mess but it works
+                members.size() >= CONFIG.membersRequiredForHome ?
+                (group.homePos == null ?
+                        "Unset" :
+                        "%d, %d, %d".formatted((int) group.homePos.x, (int) group.homePos.y, (int) group.homePos.z)
+                ) :
+                "Not eligible (%d/%d members required)".formatted(members.size(), CONFIG.membersRequiredForHome)
+        ));
+
+        ctx.getSource().sendFeedback(PlaceholderAPI.parsePredefinedText(
+                TextParser.parse(CONFIG.messages.groupInfo),
+                PlaceholderAPI.PREDEFINED_PLACEHOLDER_PATTERN,
+                p1
+        ), true);
 
         ctx.getSource().sendFeedback(PlaceholderAPI.parsePredefinedText(
                 TextParser.parse(CONFIG.messages.groupMemberList),
@@ -640,9 +690,9 @@ public class Commands {
         return 0;
     }
 
-    private static int setPrimaryGroup(CommandContext<ServerCommandSource> ctx, boolean reset) {
-        ServerPlayerEntity player = CommandHelpers.checkPlayer(ctx);
-        if (player == null) { return 1; }
+    private static int setPrimaryGroup(CommandContext<ServerCommandSource> ctx, boolean reset) throws CommandSyntaxException {
+        ServerPlayerEntity player = ctx.getSource().getPlayer();
+        
 
         HashMap<String, Text> placeholders = new HashMap<>();
 
@@ -682,22 +732,69 @@ public class Commands {
         return 0;
     }
 
+    private static int tpHome(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
+        ServerPlayerEntity player = ctx.getSource().getPlayer();
+
+        Group group;
+        try {
+            String name = ctx.getArgument("name", String.class);
+            group = DATABASE.getGroup(name);
+        } catch (IllegalArgumentException e) {
+            group = DATABASE.getPrimaryGroup(player.getUuid());
+        }
+
+        if (group == null) {
+            ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.noGroupError), true);
+            return 1;
+        }
+
+        if (!(Permissions.check(player, "multichats.admin.home") || group.checkAccess(player.getUuid()))) {
+            ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.noPermissionError), true);
+            return 1;
+        }
+
+        if (group.getMembers().size() < CONFIG.membersRequiredForHome) {
+            ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.notEligibleForHomeError), true);
+            return 1;
+        }
+
+        if (group.homePos == null) {
+            ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.noHomeSetError), true);
+            return 1;
+        }
+
+        player.teleport(group.getHomeDim(), group.homePos.x + 0.5, group.homePos.y, group.homePos.z + 0.5,
+                player.getYaw(), player.getPitch());
+
+
+        HashMap<String, Text> placeholders = new HashMap<>();
+
+        placeholders.put("group", group.displayName);
+
+        ctx.getSource().sendFeedback(PlaceholderAPI.parsePredefinedText(
+                TextParser.parse(CONFIG.messages.teleportedHome),
+                PlaceholderAPI.PREDEFINED_PLACEHOLDER_PATTERN,
+                placeholders
+        ), true);
+        return 0;
+    }
+
     // old stuff
 
-    private static int switchChatDefaultCommand(CommandContext<ServerCommandSource> ctx) {
-        ServerPlayerEntity player = CommandHelpers.checkPlayer(ctx);
-        if (player == null) { return 1; }
+    private static int switchChatDefaultCommand(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
+        ServerPlayerEntity player = ctx.getSource().getPlayer();
+        
 
         PlayerChatTracker.setToChat(player, null);
         ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.switchedGlobal), false);
         return 0;
     }
 
-    private static int switchChatCommand(CommandContext<ServerCommandSource> ctx) {
+    private static int switchChatCommand(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
         String chatName = ctx.getArgument("chat", String.class);
 
-        ServerPlayerEntity player = CommandHelpers.checkPlayer(ctx);
-        if (player == null) { return 1; }
+        ServerPlayerEntity player = ctx.getSource().getPlayer();
+        
 
         Group group = DATABASE.getGroup(chatName);
         if (group == null) {
@@ -780,6 +877,7 @@ public class Commands {
         ctx.getSource().sendFeedback(TextParser.parse("Group \"" + chatName + "\" deleted"), true);
         return 0;
     }
+
 
     public static RequiredArgumentBuilder<ServerCommandSource, String> playerArgument(String name) {
         return CommandManager.argument(name, StringArgumentType.word())

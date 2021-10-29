@@ -17,6 +17,7 @@ public class ConfigManager {
     public String chatFormat = "<dark_aqua><hover:'Click to send message to this chat'><cmd:${prefix}>[${group}]</cmd></hover></dark_aqua> ${player} <dark_gray>» <white>${message}";
 //    public String globalPrefix = "$";
     public String defaultGroupName = "<dark_gray>Wanderer";
+    public int membersRequiredForHome = 3;
 
     public Messages messages = new Messages();
     public static class Messages {
@@ -37,6 +38,8 @@ public class ConfigManager {
         public String alreadyManagerError = "<red>That player is already a manager";
         public String notManagerError = "<red>That player is not a manager";
         public String prefixTooLongError = "<red>That prefix is invalid";
+        public String notEligibleForHomeError = "<red>Your alliance does not have enough members to have a home";
+        public String noHomeSetError = "<red>Your alliance does not have a home set";
         // General messages
         public String switched = "<dark_aqua>Switched chat to <yellow>${group}</yellow>";
         public String switchedPrefix = "<dark_aqua>You can also prefix your message with \"<yellow>${prefix}</yellow>\" to send it to this chat";
@@ -59,9 +62,13 @@ public class ConfigManager {
         public String modifyDisplayName = "<dark_aqua>Set the display name of <yellow>${group}</yellow> to <yellow>${string}</yellow>.";
         public String modifyDisplayNameShort = "<dark_aqua>Set the short display name of <yellow>${group}</yellow> to <yellow>${string}</yellow>.";
         public String resetPrefix = "<dark_aqua>The prefix of <yellow>${group}</yellow> has been reset.";
-        public String groupMemberList = "<dark_aqua><yellow>${group}</yellow> has the following members:";
-        public String groupMemberListEntry = "<aqua>  ${permissionLevel}: <yellow>${player}</yellow>";
+        public String groupInfo = "<dark_aqua><yellow>${group}</yellow>:\n  Prefix: <yellow>${prefix}</yellow>\n  Home: <yellow>${home}</yellow>";
+        public String groupMemberList = "<dark_aqua>  Members:";
+        public String groupMemberListEntry = "<aqua>    ${permissionLevel}: <yellow>${player}</yellow>";
         public String groupMemberKicked = "<dark_aqua><yellow>${player}</yellow> was kicked from <yellow>${group}</yellow>.";
+        public String homeSet = "<dark_aqua>Home for <yellow>${group}</yellow> set to your current location.";
+        public String homeUnset = "<dark_aqua>Home for <yellow>${group}</yellow> unset.";
+        public String teleportedHome = "<dark_aqua>Teleporting to home of <yellow>${group}</yellow>.";
     }
 
     // Reading and saving
