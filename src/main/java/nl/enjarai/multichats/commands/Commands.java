@@ -649,7 +649,7 @@ public class Commands {
         HashMap<String, Text> p1 = new HashMap<>();
 
         p1.put("group", group.displayName);
-        p1.put("prefix", new LiteralText(group.prefix));
+        p1.put("prefix", new LiteralText(group.prefix == null ? "Unset" : group.prefix));
         p1.put("home", new LiteralText( // this is a mess but it works
                 members.size() >= CONFIG.membersRequiredForHome ?
                 (group.homePos == null ?
