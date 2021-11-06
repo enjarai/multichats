@@ -25,7 +25,7 @@ public class MultiChats implements ModInitializer {
 	public static final Logger LOGGER = LogManager.getLogger("MultiChats");
 	public static MinecraftServer SERVER;
 
-	public static final String VERSION = "2.1.2";
+	public static final String VERSION = "2.1.3";
 	public static final File CONFIG_FILE = new File("config/multichats.json");
 	public static final String DATABASE_FILE ="config/multichats.db";
 
@@ -62,7 +62,7 @@ public class MultiChats implements ModInitializer {
 		try {
 			DATABASE = new SQLiteDatabase(DATABASE_FILE);
 			LOGGER.info("MultiChats database loaded.");
-		} catch (SQLException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 
 			LOGGER.error("Couldn't connect to database! Stopping server...");

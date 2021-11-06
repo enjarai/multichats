@@ -50,4 +50,6 @@ public interface DatabaseHandlerInterface {
 
     HashMap<UUID, GroupPermissionLevel> getMembers(Group group);
     HashMap<UUID, GroupPermissionLevel> getMembers(Group group, GroupPermissionLevel exactPermissionLevel);
+
+    HashMap<UUID, GroupPermissionLevel> getPrimaryMembers(Group group);
 }

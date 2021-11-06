@@ -18,14 +18,15 @@ public class ConfigManager {
 //    public String globalPrefix = "$";
     public String defaultGroupName = "<dark_gray>Wanderer";
     public int membersRequiredForHome = 3;
+    public int primaryGroupSwitchCooldownSeconds = 600;
 
     public Messages messages = new Messages();
     public static class Messages {
         // Errors
         public String unknownError = "<red>By some wizardry you've found an error message that shouldn't be seen!\nplease contact enjarai on the disc because this is a bug";
         public String noPlayerError = "<red>This command should be executed by a player";
-        public String noPermissionChatError = "<red>You dont have permission to access that chat";
-        public String noPermissionError = "<red>You dont have permission to do that";
+        public String noPermissionChatError = "<red>You don't have permission to access that chat";
+        public String noPermissionError = "<red>You don't have permission to do that";
         public String noGroupError = "<red>This alliance does not exist";
         public String noInvitesError = "<red>You have no open invites";
         public String notInGroupError = "<red>You arent part of that alliance";
@@ -38,8 +39,9 @@ public class ConfigManager {
         public String alreadyManagerError = "<red>That player is already a manager";
         public String notManagerError = "<red>That player is not a manager";
         public String prefixTooLongError = "<red>That prefix is invalid";
-        public String notEligibleForHomeError = "<red>Your alliance does not have enough members to have a home";
+        public String notEligibleForHomeError = "<red>Your alliance does not have enough primary members to have a home";
         public String noHomeSetError = "<red>Your alliance does not have a home set";
+        public String waitToSwitchPrimaryError = "<red>Please wait 10 minutes before switching your primary alliance";
         // General messages
         public String switched = "<dark_aqua>Switched chat to <yellow>${group}</yellow>";
         public String switchedPrefix = "<dark_aqua>You can also prefix your message with \"<yellow>${prefix}</yellow>\" to send it to this chat";

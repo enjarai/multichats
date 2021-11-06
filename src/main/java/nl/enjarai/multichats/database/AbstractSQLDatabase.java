@@ -455,4 +455,29 @@ public abstract class AbstractSQLDatabase implements DatabaseHandlerInterface {
         }
         return map;
     }
+
+    @Override
+    public HashMap<UUID, GroupPermissionLevel> getPrimaryMembers(Group group) {
+        HashMap<UUID, GroupPermissionLevel> map = new HashMap<>();
+        try {
+            PreparedStatement prepStmt = CONNECTION.prepareStatement(
+                    "SELECT * FROM Users WHERE groupName=? AND isPrimary=true;");
+            prepStmt.setString(1, group.name);
+
+            ResultSet result = prepStmt.executeQuery();
+
+            if (result.next()) {
+                do {
+                    map.put(
+                            UUID.fromString(result.getString("uuid")),
+                            Helpers.getPermissionLevelFromInt(result.getInt("permissionLevel"))
+                    );
+                } while (result.next());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        return map;
+    }
 }

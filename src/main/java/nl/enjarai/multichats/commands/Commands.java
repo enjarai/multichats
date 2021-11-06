@@ -225,6 +225,8 @@ public class Commands {
         });
     }
 
+    private static TimerManager PRIMARY_GROUP_TIMER = new TimerManager(CONFIG.primaryGroupSwitchCooldownSeconds);
+
     private static int help(CommandContext<ServerCommandSource> ctx) {
         ctx.getSource().sendFeedback(TextParser.parse(
                 "<dark_aqua><bold>MultiChats v" + VERSION + " by enjarai</bold>\n<aqua>" +
@@ -240,7 +242,8 @@ public class Commands {
 
 
     private static int createGroup(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
-        String name = ctx.getArgument("name", String.class);
+        String name = ctx.getArgument("name", String.class)
+                .toLowerCase(Locale.ROOT).replaceAll("\\s","");
 
         ServerPlayerEntity player = ctx.getSource().getPlayer();
         
@@ -475,7 +478,7 @@ public class Commands {
                     success = group.save();
                 }
                 case SETHOME -> {
-                    if (group.getMembers().size() >= CONFIG.membersRequiredForHome) {
+                    if (group.eligibleForHome()) {
                         Vec3d pos = player.getPos();
                         group.setHome((int) Math.floor(pos.x), (int) Math.floor(pos.y), (int) Math.floor(pos.z),
                                 player.getServerWorld().getRegistryKey().getValue().toString());
@@ -645,18 +648,17 @@ public class Commands {
             return 1;
         }
 
-        HashMap<UUID, GroupPermissionLevel> members = group.getMembers();
         HashMap<String, Text> p1 = new HashMap<>();
 
         p1.put("group", group.displayName);
         p1.put("prefix", new LiteralText(group.prefix == null ? "Unset" : group.prefix));
         p1.put("home", new LiteralText( // this is a mess but it works
-                members.size() >= CONFIG.membersRequiredForHome ?
+                group.eligibleForHome() ?
                 (group.homePos == null ?
                         "Unset" :
                         "%d, %d, %d".formatted((int) group.homePos.x, (int) group.homePos.y, (int) group.homePos.z)
                 ) :
-                "Not eligible (%d/%d members required)".formatted(members.size(), CONFIG.membersRequiredForHome)
+                "Not eligible (%d/%d members required)".formatted(group.getPrimaryMembers().size(), CONFIG.membersRequiredForHome)
         ));
 
         ctx.getSource().sendFeedback(PlaceholderAPI.parsePredefinedText(
@@ -696,8 +698,9 @@ public class Commands {
 
         HashMap<String, Text> placeholders = new HashMap<>();
 
+        UUID uuid = player.getUuid();
         if (reset) {
-            if (!(DATABASE.changePrimaryGroup(player.getUuid(), null))) {
+            if (!(DATABASE.changePrimaryGroup(uuid, null))) {
                 ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.unknownError), true);
                 return 1;
             }
@@ -710,12 +713,17 @@ public class Commands {
                 return 1;
             }
 
-            if (!(group.checkAccess(player.getUuid()))) {
+            if (!(group.checkAccess(uuid))) {
                 ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.notInGroupError), true);
                 return 1;
             }
 
-            if (!(DATABASE.changePrimaryGroup(player.getUuid(), group))) {
+            if (!PRIMARY_GROUP_TIMER.canTrigger(uuid)) {
+                ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.waitToSwitchPrimaryError), true);
+                return 1;
+            }
+
+            if (!(DATABASE.changePrimaryGroup(uuid, group))) {
                 ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.unknownError), true);
                 return 1;
             }
@@ -748,12 +756,12 @@ public class Commands {
             return 1;
         }
 
-        if (!(Permissions.check(player, "multichats.admin.home") || group.checkAccess(player.getUuid()))) {
+        if (!(Permissions.check(player, "multichats.admin.home") || group.checkPrimary(player.getUuid()))) {
             ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.noPermissionError), true);
             return 1;
         }
 
-        if (group.getMembers().size() < CONFIG.membersRequiredForHome) {
+        if (!group.eligibleForHome()) {
             ctx.getSource().sendFeedback(TextParser.parse(CONFIG.messages.notEligibleForHomeError), true);
             return 1;
         }
@@ -826,6 +834,7 @@ public class Commands {
 
     private static int reloadConfig(CommandContext<ServerCommandSource> ctx) {
         CONFIG = ConfigManager.loadConfigFile(MultiChats.CONFIG_FILE);
+        PRIMARY_GROUP_TIMER = new TimerManager(CONFIG.primaryGroupSwitchCooldownSeconds);
         ctx.getSource().sendFeedback(TextParser.parse("Reloaded config!"), true);
         return 0;
     }

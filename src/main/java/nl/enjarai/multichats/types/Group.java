@@ -15,6 +15,8 @@ import nl.enjarai.multichats.MultiChats;
 import java.util.HashMap;
 import java.util.UUID;
 
+import static nl.enjarai.multichats.MultiChats.CONFIG;
+
 public class Group {
     public String name;
     public Text displayName;
@@ -50,6 +52,10 @@ public class Group {
 
     public ServerWorld getHomeDim() {
         return MultiChats.SERVER.getWorld(RegistryKey.of(Registry.WORLD_KEY, Identifier.tryParse(homeDimension)));
+    }
+
+    public boolean eligibleForHome() {
+        return getPrimaryMembers().size() >= CONFIG.membersRequiredForHome;
     }
 
 
@@ -93,6 +99,10 @@ public class Group {
 
     public HashMap<UUID, GroupPermissionLevel> getMembers(GroupPermissionLevel exactPermissionLevel) {
         return MultiChats.DATABASE.getMembers(this, exactPermissionLevel);
+    }
+
+    public HashMap<UUID, GroupPermissionLevel> getPrimaryMembers() {
+        return MultiChats.DATABASE.getPrimaryMembers(this);
     }
 
 

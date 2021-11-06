@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.UUID;
 
 public class InviteManager {
-    private static final HashMap<UUID, Invite> invites = new HashMap<>();
+    private final HashMap<UUID, Invite> invites = new HashMap<>();
 
     public void putInvite(UUID uuid, Group group, ServerPlayerEntity from) {
         invites.put(uuid, new Invite(group, from));
