@@ -11,10 +11,13 @@ and you want to make clear that you're all part of a group.
 
 This brings us to the benefits of having an alliance. 
 At the moment there are only two, but that may expand later:
+
 - A [private chatroom] in the ingame chat.
 - Your primary alliance name next to your name in the tablist.
+- A home location you can teleport to from anywhere. (Only if your alliance has more than 3 [primary members])
 
 [private chatroom]: chatrooms-basics.md
+[primary members]: primary-members.md
 
 ### Joining an alliance
 
@@ -25,14 +28,15 @@ asking around for a bit will generally get you in if they're accepting new membe
 You can join as many alliances as you want, but some 
 might not accept you if you're gonna two-time them.
 If you do join multiple alliances, the one that shows up next 
-to your name in the tab menu is decided by your primary alliance setting.
+to your name in the tab menu is decided by your [primary alliance] setting.
 This can be configured using the `/alliance primary set <name>` command,
 Or you can reset it to the default with `/alliance primary reset`.
 
-For more info, check out the [general command reference] and [chatrooms basics]
+For more info, check out the [general command reference], [chatrooms basics] and [primary alliance] pages.
 
 [general command reference]: commands.md
 [chatrooms basics]: chatrooms-basics.md
+[primary alliance]: primary-members.md
 
 ### Creating an alliance
 
